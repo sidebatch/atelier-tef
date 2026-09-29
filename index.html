@@ -481,13 +481,22 @@
     const frenchAudioCache = new Map();
     const HAS_HOSTED_AUDIO = /^(L[1-5]|L8)-/;
     function frenchAudioUrl(cardId) { return `audio/${encodeURIComponent(cardId)}.mp3`; }
+    let pronounceToken = 0;
     function markPronouncing(on) {
       document.querySelectorAll(".pronounce-btn").forEach(btn => btn.classList.toggle("playing", on));
+    }
+    function pronounceStarted() {
+      const token = ++pronounceToken;
+      markPronouncing(true);
+      return token;
+    }
+    function pronounceEnded(token) {
+      if (token === pronounceToken) markPronouncing(false);
     }
     function hookPronounceEnd(audio) {
       if (audio._pronounceHooked) return;
       audio._pronounceHooked = true;
-      audio.addEventListener("ended", () => markPronouncing(false));
+      audio.addEventListener("ended", () => pronounceEnded(audio._pronounceToken));
     }
     let sfxCtx = null;
     let sfxNoise = null;
@@ -842,13 +851,13 @@
       playHostedFrench(cardId, spokenText);
     }
 
-    let frenchPlayToken = 0;
     function playHostedFrench(cardId, spokenText) {
-      const myToken = ++frenchPlayToken;
+      const token = pronounceStarted();
       if (onlineFrenchAudio) {
         onlineFrenchAudio.pause();
         onlineFrenchAudio = null;
       }
+      try { window.speechSynthesis.cancel(); } catch (_) {}
       let audio = frenchAudioCache.get(cardId);
       if (!audio) {
         audio = new Audio(frenchAudioUrl(cardId));
@@ -860,17 +869,20 @@
         fallbackStarted = true;
         playNativeOrOnlineFrench(spokenText);
       };
+      const failNow = () => {
+        if (token !== pronounceToken) return;
+        pronounceEnded(token);
+        fallback();
+      };
       onlineFrenchAudio = audio;
-      audio.addEventListener("error", fallback, { once: true });
+      audio._pronounceToken = token;
+      audio.addEventListener("error", () => { if (token === pronounceToken) fallback(); }, { once: true });
       hookPronounceEnd(audio);
       try { audio.currentTime = 0; } catch (_) {}
-      markPronouncing(true);
-      const playPromise = audio.play();
-      if (playPromise) playPromise.catch(() => {
-        if (myToken !== frenchPlayToken) return;
-        markPronouncing(false);
-        fallback();
-      });
+      let playPromise = null;
+      try { playPromise = audio.play(); } catch (_) {}
+      if (playPromise && typeof playPromise.catch === "function") playPromise.catch(failNow);
+      else if (!playPromise) failNow();
     }
 
     function playNativeOrOnlineFrench(spokenText) {
@@ -887,33 +899,39 @@
         if (franceVoice) utterance.voice = franceVoice;
         utterance.rate = 0.84;
         utterance.pitch = 1;
-        let ended = false;
-        const clearMark = () => { if (!ended) { ended = true; markPronouncing(false); } };
-        utterance.onend = clearMark;
-        utterance.onerror = clearMark;
-        setTimeout(clearMark, 15000);
+        const token = pronounceStarted();
+        utterance.onend = () => pronounceEnded(token);
+        utterance.onerror = () => pronounceEnded(token);
+        setTimeout(() => pronounceEnded(token), 15000);
         window.speechSynthesis.speak(utterance);
-        markPronouncing(true);
       } catch (e) {
         playOnlineFrench(spokenText);
       }
     }
 
     function playOnlineFrench(text) {
+      const token = pronounceStarted();
       if (onlineFrenchAudio) {
         onlineFrenchAudio.pause();
         onlineFrenchAudio = null;
       }
+      try { window.speechSynthesis.cancel(); } catch (_) {}
       // Google Translate의 표준 프랑스어(fr) 음성: 캐나다 프랑스어(fr-CA)는 요청하지 않음.
       const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=fr&q=${encodeURIComponent(text)}`;
       const audio = new Audio(url);
       onlineFrenchAudio = audio;
+      audio._pronounceToken = token;
       hookPronounceEnd(audio);
-      const onlineFail = () => { markPronouncing(false); showToast("온라인 발음을 재생하지 못했어요. 인터넷 연결을 확인해 주세요."); };
+      const onlineFail = () => {
+        if (token !== pronounceToken) return;
+        pronounceEnded(token);
+        showToast("온라인 발음을 재생하지 못했어요. 인터넷 연결을 확인해 주세요.");
+      };
       audio.addEventListener("error", onlineFail, { once: true });
-      markPronouncing(true);
-      const onlinePromise = audio.play();
-      if (onlinePromise) onlinePromise.catch(onlineFail);
+      let onlinePromise = null;
+      try { onlinePromise = audio.play(); } catch (_) {}
+      if (onlinePromise && typeof onlinePromise.catch === "function") onlinePromise.catch(onlineFail);
+      else if (!onlinePromise) onlineFail();
     }
 
     function applyGrade(correct) {
