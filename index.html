@@ -651,8 +651,8 @@
           <div class="actions${revealed ? " revealed-actions" : ""}" id="actions">
             <button class="reveal-btn" id="revealBtn" type="button">정답 보기</button>
             <div class="grade-row">
-              <button class="grade wrong" id="wrongBtn" type="button">X 모름<small>${state.mode === "hard" ? "3장 뒤 다시" : "10장 뒤 다시"}</small></button>
-              <button class="grade right" id="rightBtn" type="button">O 앎<small>${p.streak === 2 ? "완료 처리" : "뒤로 보내기"}</small></button>
+              <button class="grade wrong" id="wrongBtn" type="button">X<small>${state.mode === "hard" ? "3장 뒤 다시" : "10장 뒤 다시"}</small></button>
+              <button class="grade right" id="rightBtn" type="button">O<small>${p.streak === 2 ? "완료 처리" : "뒤로 보내기"}</small></button>
             </div>
           </div>
           <p class="shortcut">Space: 정답 · ← X · → O</p>
