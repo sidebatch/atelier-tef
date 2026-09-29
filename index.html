@@ -497,7 +497,7 @@
       bindTap($("#rightBtn"), event => { event.stopPropagation(); grade(true); });
       bindTap($("#pronounceBtn"), event => {
         event.stopPropagation();
-        pronounce(card.fr);
+        pronounce(card.fr, card.id);
       });
       save();
     }
@@ -519,8 +519,29 @@
       });
     }
 
-    function pronounce(text) {
+    function pronounce(text, cardId) {
       const spokenText = text.replace(/\s*\([fm]\.\)/gi, "").replace(/\s{2,}/g, " ").trim();
+      playHostedFrench(cardId, spokenText);
+    }
+
+    function playHostedFrench(cardId, spokenText) {
+      if (onlineFrenchAudio) {
+        onlineFrenchAudio.pause();
+        onlineFrenchAudio = null;
+      }
+      const audio = new Audio(`audio/${encodeURIComponent(cardId)}.mp3`);
+      let fallbackStarted = false;
+      const fallback = () => {
+        if (fallbackStarted) return;
+        fallbackStarted = true;
+        playNativeOrOnlineFrench(spokenText);
+      };
+      onlineFrenchAudio = audio;
+      audio.addEventListener("error", fallback, { once: true });
+      audio.play().catch(fallback);
+    }
+
+    function playNativeOrOnlineFrench(spokenText) {
       if (!("speechSynthesis" in window)) {
         playOnlineFrench(spokenText);
         return;
