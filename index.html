@@ -656,7 +656,7 @@
     }
 
     function renderHardList() {
-      const hard = CARDS
+      const hard = deckCards()
         .filter(card => wrongTotal(card.id) > 0)
         .sort((a, b) => wrongTotal(b.id) - wrongTotal(a.id) || a.lexique - b.lexique || a.number - b.number);
       $("#hardList").innerHTML = hard.length ? hard.map(card => `

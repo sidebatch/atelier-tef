@@ -78,7 +78,7 @@ function render(){
     const choices=q.choices.map((c,i)=>'<button class="choice" data-q="'+q.n+'" data-i="'+i+'">'+htmlEsc(c)+'</button>').join('');
     return '<div class="card" id="q'+q.n+'"><div class="qnum">문제 '+q.n+'</div><div class="prompt">'+htmlEsc(q.prompt)+'</div>'
       +paras
-      +'<button data-tr="'+q.n+'">📖 해석 보기</button> <span class="hint">단어 1번 탭=🔴표시 · 2번 연속 탭=뜻 보기</span>'
+      +'<button data-tr="'+q.n+'">📖 해석 보기</button> <button data-say="'+q.n+'">🔊 지문 듣기</button> <span class="hint">단어 1번 탭=🔴표시 · 2번 연속 탭=뜻 보기</span>'
       +'<div class="trans" id="tr'+q.n+'">'+htmlEsc(q.trans)+'</div>'
       +'<div class="choices">'+choices+'</div>'
       +'<button data-chk="'+q.n+'">정답 확인</button><div class="ans" id="ans'+q.n+'"></div></div>';
@@ -90,6 +90,7 @@ function render(){
   });
   main.querySelectorAll('[data-tr]').forEach(b=>b.addEventListener('click',()=>{
     document.getElementById('tr'+b.dataset.tr).classList.toggle('show');b.classList.toggle('on');}));
+  main.querySelectorAll('[data-say]').forEach(b=>b.addEventListener('click',()=>sayQuestion(b)));
   main.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>{
     document.querySelectorAll('.choice[data-q="'+b.dataset.q+'"]').forEach(x=>x.classList.remove('sel'));
     b.classList.add('sel');}));
@@ -120,5 +121,40 @@ document.getElementById('fab').addEventListener('click',()=>{
 document.getElementById('closePanel').addEventListener('click',()=>document.getElementById('panel').classList.remove('show'));
 document.getElementById('clearRed').addEventListener('click',()=>{red.clear();save();render();
   document.getElementById('panel').classList.remove('show');});
+let speakingQn=null,sayAudio=null;
+function frenchVoices(){try{return speechSynthesis.getVoices().filter(v=>{const l=(v.lang||'').toLowerCase();return l==='fr-fr'||l.indexOf('fr-fr-')===0||l==='fr';});}catch(e){return[];}}
+function sayStop(){try{if('speechSynthesis' in window)speechSynthesis.cancel();}catch(e){}
+  if(sayAudio){try{sayAudio.pause();}catch(e){}sayAudio=null;}speakingQn=null;refreshSayBtns();}
+function refreshSayBtns(){document.querySelectorAll('[data-say]').forEach(b=>{const on=speakingQn!==null&&+b.dataset.say===speakingQn;
+  b.classList.toggle('on',on);b.textContent=on?'⏹ 듣기 중지':'🔊 지문 듣기';});}
+function questionText(qn){const q=DATA.find(x=>x.n==qn);if(!q)return'';
+  return q.paras.map(toks=>toks.map(t=>t.x).join('')).join(' ').replace(/\s+/g,' ').trim();}
+function chunkText(t){const parts=t.split(/(?<=[.!?…])\s+/);const out=[];let cur='';
+  for(const p of parts){if((cur+' '+p).trim().length>180){if(cur)out.push(cur.trim());cur=p;}else cur=(cur+' '+p).trim();}
+  if(cur.trim())out.push(cur.trim());return out.length?out:[' '];}
+function sayQuestion(btn){const qn=+btn.dataset.say;
+  if(speakingQn===qn){sayStop();return;}
+  sayStop();
+  const text=questionText(qn);
+  if(!text){toast('읽을 지문이 없어요');return;}
+  speakingQn=qn;refreshSayBtns();
+  const done=()=>{if(speakingQn===qn){speakingQn=null;refreshSayBtns();}};
+  if('speechSynthesis' in window){
+    const vs=frenchVoices();const v=vs.find(x=>(x.lang||'').toLowerCase()==='fr-fr')||vs[0];
+    if(v){try{speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(text);u.lang='fr-FR';u.voice=v;u.rate=0.9;
+      u.onend=done;u.onerror=done;speechSynthesis.speak(u);return;}catch(e){}}
+  }
+  const chunks=chunkText(text);let i=0;
+  const next=()=>{if(speakingQn!==qn)return;
+    if(i>=chunks.length){done();return;}
+    const url='https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=fr&q='+encodeURIComponent(chunks[i++]);
+    try{const a=new Audio(url);sayAudio=a;a.onended=next;
+      a.onerror=()=>{toast('온라인 발음을 재생하지 못했어요');done();};
+      const r=a.play();if(r&&r.catch)r.catch(()=>{toast('온라인 발음을 재생하지 못했어요');done();});
+    }catch(e){toast('온라인 발음을 재생하지 못했어요');done();}};
+  next();}
+if('speechSynthesis' in window){try{speechSynthesis.getVoices();
+  if(speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',()=>speechSynthesis.getVoices());}catch(e){}}
 render();save();
 </script></body></html>
