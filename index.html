@@ -695,6 +695,22 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
+    // 뒤로가기 한 번에 앱이 꺼지지 않게: 2초 안에 두 번 눌러야 종료
+    let lastBackPressAt = 0;
+    try { history.pushState({ backGuard: true }, ""); } catch (_) {}
+    window.addEventListener("popstate", () => {
+      try { history.pushState({ backGuard: true }, ""); } catch (_) {}
+      const openDialog = document.querySelector("dialog[open]");
+      if (openDialog) { openDialog.close(); return; }
+      const now = Date.now();
+      if (now - lastBackPressAt < 2000) {
+        try { history.back(); } catch (_) {}
+        return;
+      }
+      lastBackPressAt = now;
+      showToast("한 번 더 누르면 앱이 꺼져요");
+    });
+
     function bindTap(target, handler) {
       target.addEventListener("click", handler);
       target.addEventListener("touchend", event => {
