@@ -468,6 +468,19 @@
     }
     let toastTimer;
     let onlineFrenchAudio = null;
+    const frenchAudioCache = new Map();
+    const HAS_HOSTED_AUDIO = /^(L[1-5]|L8)-/;
+    function frenchAudioUrl(cardId) { return `audio/${encodeURIComponent(cardId)}.mp3`; }
+    function prefetchFrenchAudio(cardId) {
+      if (!cardId || !HAS_HOSTED_AUDIO.test(cardId) || frenchAudioCache.has(cardId)) return;
+      try {
+        const audio = new Audio(frenchAudioUrl(cardId));
+        audio.preload = "auto";
+        frenchAudioCache.set(cardId, audio);
+        if (frenchAudioCache.size > 6) frenchAudioCache.delete(frenchAudioCache.keys().next().value);
+        audio.load();
+      } catch (_) {}
+    }
 
     const $ = (selector) => document.querySelector(selector);
     const main = $("#main");
@@ -696,6 +709,8 @@
         return;
       }
       const card = CARDS.find(item => item.id === queue[0]);
+      prefetchFrenchAudio(card.id);
+      if (queue[1]) prefetchFrenchAudio(queue[1]);
       typeChecked = false;
       if (state.direction === "type") {
         main.innerHTML = typeMarkup(card, queue.length);
@@ -762,7 +777,11 @@
         onlineFrenchAudio.pause();
         onlineFrenchAudio = null;
       }
-      const audio = new Audio(`audio/${encodeURIComponent(cardId)}.mp3`);
+      let audio = frenchAudioCache.get(cardId);
+      if (!audio) {
+        audio = new Audio(frenchAudioUrl(cardId));
+        frenchAudioCache.set(cardId, audio);
+      }
       let fallbackStarted = false;
       const fallback = () => {
         if (fallbackStarted) return;
@@ -771,7 +790,9 @@
       };
       onlineFrenchAudio = audio;
       audio.addEventListener("error", fallback, { once: true });
-      audio.play().catch(fallback);
+      try { audio.currentTime = 0; } catch (_) {}
+      const playPromise = audio.play();
+      if (playPromise) playPromise.catch(fallback);
     }
 
     function playNativeOrOnlineFrench(spokenText) {
