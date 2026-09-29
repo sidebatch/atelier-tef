@@ -204,6 +204,23 @@
     .wrong { background: var(--red-soft); color: var(--red); border-color: #eccac5; }
     .right { background: var(--green-soft); color: var(--green); border-color: #c3dfcc; }
     .shortcut { margin: 10px 0 0; text-align: center; color: var(--muted); font-size: 11px; }
+    .type-area { margin: 16px 0 4px; display: flex; flex-direction: column; gap: 10px; }
+    #typeInput { font-size: 19px; padding: 13px 14px; border: 2px solid var(--line); border-radius: 12px; width: 100%; box-sizing: border-box; background: #fff; font-family: inherit; color: var(--ink); }
+    #typeInput:focus { outline: none; border-color: #b8860b; }
+    .type-btns { display: flex; gap: 8px; }
+    #typeCheckBtn { flex: 1.4; min-height: 52px; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 800; font-size: 16px; border: 1px solid var(--ink); cursor: pointer; }
+    #typeDontKnowBtn { flex: 1; min-height: 52px; border-radius: 12px; background: rgba(255, 253, 248, .82); border: 1px solid var(--line); font-weight: 700; font-size: 15px; cursor: pointer; color: var(--ink); }
+    .type-result { margin: 14px 0 4px; border-radius: 14px; padding: 14px; background: rgba(255, 253, 248, .82); border: 1px solid var(--line); }
+    .type-result.correct { border-color: #15803d; background: #f0fdf4; }
+    .type-result.wrong { border-color: #b91c1c; background: #fef2f2; }
+    .type-msg { font-size: 17px; font-weight: 850; margin-bottom: 8px; }
+    .type-result.correct .type-msg { color: #15803d; }
+    .type-result.wrong .type-msg { color: #b91c1c; }
+    .type-given { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
+    .type-answer { font-size: 18px; }
+    .type-note { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    #typePronounceBtn { flex: 1; min-height: 48px; border-radius: 12px; background: rgba(255, 253, 248, .82); border: 1px solid var(--line); font-weight: 700; font-size: 14px; cursor: pointer; color: var(--ink); }
+    #typeNextBtn { flex: 1.4; min-height: 48px; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 800; font-size: 16px; border: 1px solid var(--ink); cursor: pointer; }
 
     .empty {
       width: min(620px, 100%); padding: 40px 28px; text-align: center;
@@ -324,12 +341,92 @@
       { id: "b1b2", label: "B1·B2 단어", test: card => card.lexique === 6 },
       { id: "all", label: "전체", test: () => true },
     ];
+    const DIRECTIONS = ["fr-ko", "ko-fr", "type"];
+    const DIRECTION_LABELS = { "fr-ko": ["FR", "KR"], "ko-fr": ["KR", "FR"], "type": ["KR", "쓰기"] };
     function deckCards() {
       const deck = DECKS.find(item => item.id === state.deck) || DECKS[0];
       return CARDS.filter(deck.test);
     }
     const TODAY = new Date().toLocaleDateString("en-CA");
     let revealed = false;
+    let typeChecked = false;
+
+    function normFr(s) { return String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[.!?]+$/g, "").trim().replace(/\s+/g, " "); }
+    function stripAccents(s) { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+    function acceptableAnswers(card) {
+      return String(card.fr).split("/").map(v => v.replace(/\s*\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim()).filter(Boolean);
+    }
+    function checkTyped(gaveUp) {
+      const input = $("#typeInput");
+      const raw = input ? input.value : "";
+      if (!gaveUp && !raw.trim()) { showToast("단어를 입력해 주세요"); if (input) input.focus(); return; }
+      const queue = getQueue();
+      const card = CARDS.find(item => item.id === queue[0]);
+      if (!card) return;
+      const answers = acceptableAnswers(card);
+      const n = normFr(raw);
+      let result = "wrong";
+      if (!gaveUp) {
+        if (answers.some(a => normFr(a) === n)) result = "correct";
+        else if (answers.some(a => stripAccents(normFr(a)) === stripAccents(n))) result = "accent";
+      }
+      applyGrade(result !== "wrong");
+      typeChecked = true;
+      renderTypeResult(card, result, raw);
+    }
+    function renderTypeResult(card, result, raw) {
+      const area = $("#typeArea");
+      if (!area) return;
+      const ok = result !== "wrong";
+      const msg = result === "correct" ? "⭕ 맞았어요!" : result === "accent" ? "⭕ 맞았어요! (악센트 확인)" : "❌ 틀렸어요";
+      area.innerHTML =
+        '<div class="type-result ' + (ok ? "correct" : "wrong") + '">' +
+          '<div class="type-msg">' + msg + "</div>" +
+          (ok ? "" : '<div class="type-given">입력: ' + (escapeHtml(raw) || "(비어 있음)") + "</div>") +
+          '<div class="type-answer">정답: <b>' + escapeHtml(card.fr) + "</b></div>" +
+          (result === "accent" ? '<div class="type-note">악센트를 포함한 정확한 표기를 확인하세요.</div>' : "") +
+          '<div class="type-btns" style="margin-top:10px">' +
+            '<button id="typePronounceBtn" type="button">🔊 발음 듣기</button>' +
+            '<button id="typeNextBtn" type="button">다음 →</button>' +
+          "</div>" +
+        "</div>";
+      bindTap($("#typeNextBtn"), () => { render(); });
+      bindTap($("#typePronounceBtn"), event => { event.stopPropagation(); pronounce(card.fr, card.id); });
+    }
+    function typeMarkup(card, queueLength) {
+      const p = progressOf(card.id);
+      const prompt = card.ko || card.en;
+      const missingKorean = !card.ko;
+      const scoped = scopeCards();
+      const scopeDone = scoped.filter(item => isMastered(item.id)).length;
+      const note = state.mode === "session" ? `세션 ${state.session} · ${scopeDone}/${scoped.length} 완료` : state.mode === "hard" ? `오답 ${scoped.length}개 집중` : "전체 범위";
+      const dots = Array.from({ length: MASTERY }, (_, i) => `<span class="dot${i < p.streak ? " on" : ""}"></span>`).join("");
+      return `
+      <div class="study">
+        <div class="queue-note"><span>${note}</span><span>대기 ${queueLength}장</span></div>
+        <article class="card" id="flashcard" tabindex="0">
+          <div class="card-top">
+            <span class="source">LEXIQUE ${card.lexique} · ${card.number}</span>
+            <span class="streak">${dots}</span>
+          </div>
+          <div class="prompt-wrap">
+            <div>
+              <div class="direction-label">한국어를 보고 프랑스어를 직접 써보세요</div>
+              <div class="prompt korean">${escapeHtml(prompt)}</div>
+              ${missingKorean ? '<div class="hint-missing">PDF에 한국어 뜻이 없어 영어 원문을 제시함</div>' : ""}
+            </div>
+          </div>
+          <div class="type-area" id="typeArea">
+            <input id="typeInput" type="text" placeholder="프랑스어 단어를 입력하세요" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="프랑스어 단어 입력">
+            <div class="type-btns">
+              <button id="typeCheckBtn" type="button">확인</button>
+              <button id="typeDontKnowBtn" type="button">모름</button>
+            </div>
+          </div>
+        </article>
+        <p class="shortcut">Enter: 확인</p>
+      </div>`;
+    }
     let toastTimer;
     let onlineFrenchAudio = null;
 
@@ -363,10 +460,12 @@
       next.progress ||= {};
       next.queues ||= {};
       if (!DECKS.some(item => item.id === next.deck)) next.deck = "base";
+      if (!DIRECTIONS.includes(next.direction)) next.direction = "fr-ko";
       for (const card of CARDS) {
         next.progress[card.id] ||= {};
         next.progress[card.id]["fr-ko"] ||= { streak: 0, o: 0, x: 0 };
         next.progress[card.id]["ko-fr"] ||= { streak: 0, o: 0, x: 0 };
+        next.progress[card.id]["type"] ||= { streak: 0, o: 0, x: 0 };
       }
       if (migratingDailyCounts && sameStudyDay) {
         const deckKey = next.deck || "base";
@@ -407,7 +506,7 @@
 
     function progressOf(id, direction = state.direction) { return state.progress[id][direction]; }
     function isMastered(id, direction = state.direction) { return progressOf(id, direction).streak >= MASTERY; }
-    function wrongTotal(id) { return progressOf(id, "fr-ko").x + progressOf(id, "ko-fr").x; }
+    function wrongTotal(id) { return DIRECTIONS.reduce((n, d) => n + progressOf(id, d).x, 0); }
 
     function scopeCards() {
       const cards = deckCards();
@@ -472,9 +571,9 @@
       sessionSelect.value = String(state.session);
       $("#modeAllBtn").textContent = `전체 ${deckCards().length}`;
       $("#deckSelect").value = state.deck;
-      const reverse = state.direction === "ko-fr";
-      $("#directionText").textContent = reverse ? "KR" : "FR";
-      $("#answerDirectionText").textContent = reverse ? "FR" : "KR";
+      const dirLabel = DIRECTION_LABELS[state.direction] || DIRECTION_LABELS["fr-ko"];
+      $("#directionText").textContent = dirLabel[0];
+      $("#answerDirectionText").textContent = dirLabel[1];
     }
 
     function cardMarkup(card, queueLength) {
@@ -557,6 +656,21 @@
         return;
       }
       const card = CARDS.find(item => item.id === queue[0]);
+      typeChecked = false;
+      if (state.direction === "type") {
+        main.innerHTML = typeMarkup(card, queue.length);
+        bindTap($("#typeCheckBtn"), () => checkTyped(false));
+        bindTap($("#typeDontKnowBtn"), () => checkTyped(true));
+        const input = $("#typeInput");
+        if (input) {
+          input.addEventListener("keydown", event => {
+            if (event.key === "Enter") { event.preventDefault(); checkTyped(false); }
+          });
+          setTimeout(() => { try { $("#typeInput")?.focus({ preventScroll: true }); } catch (_) {} }, 60);
+        }
+        save();
+        return;
+      }
       main.innerHTML = cardMarkup(card, queue.length);
       bindTap($("#flashcard"), reveal);
       $("#flashcard").addEventListener("keydown", event => {
@@ -653,8 +767,7 @@
       audio.play().catch(() => showToast("온라인 발음을 재생하지 못했어요. 인터넷 연결을 확인해 주세요."));
     }
 
-    function grade(correct) {
-      if (!revealed) return;
+    function applyGrade(correct) {
       const queue = getQueue();
       const id = queue.shift();
       const p = progressOf(id);
@@ -678,8 +791,12 @@
         queue.splice(Math.min(delay, queue.length), 0, id);
       }
       setQueue(queue);
-      revealed = false;
       save();
+    }
+    function grade(correct) {
+      if (!revealed) return;
+      applyGrade(correct);
+      revealed = false;
       render();
     }
 
@@ -738,8 +855,10 @@
       revealed = false; save(); render();
     });
     bindTap($("#directionBtn"), () => {
-      state.direction = state.direction === "fr-ko" ? "ko-fr" : "fr-ko";
-      revealed = false; save(); render(); showToast(state.direction === "fr-ko" ? "프랑스어 → 한국어" : "한국어 → 프랑스어");
+      const idx = DIRECTIONS.indexOf(state.direction);
+      state.direction = DIRECTIONS[(idx + 1) % DIRECTIONS.length];
+      revealed = false; save(); render();
+      showToast(state.direction === "fr-ko" ? "프랑스어 → 한국어" : state.direction === "ko-fr" ? "한국어 → 프랑스어" : "한국어 보고 직접 쓰기");
     });
     bindTap($("#resetBtn"), () => {
       if (!confirm("모든 학습 기록과 어려운 카드 목록을 초기화할까요?")) return;
@@ -755,6 +874,7 @@
       window.speechSynthesis.addEventListener?.("voiceschanged", () => window.speechSynthesis.getVoices());
     }
     window.addEventListener("keydown", event => {
+      if (event.target && /^(INPUT|TEXTAREA)$/.test(event.target.tagName)) return;
       if ($("#hardDialog").open) return;
       if (event.code === "Space" && !revealed) { event.preventDefault(); reveal(); }
       else if (revealed && (event.key === "ArrowLeft" || event.key.toLowerCase() === "x")) { event.preventDefault(); grade(false); }
