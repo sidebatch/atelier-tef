@@ -157,10 +157,12 @@ document.getElementById('fab').addEventListener('click',()=>{
 document.getElementById('closePanel').addEventListener('click',()=>document.getElementById('panel').classList.remove('show'));
 document.getElementById('clearRed').addEventListener('click',()=>{red.clear();save();render();
   document.getElementById('panel').classList.remove('show');});
-let speaking=null,sayAudio=null;
+let speaking=null,sayAudio=null,curAudio=null;
 function frenchVoices(){try{return speechSynthesis.getVoices().filter(v=>{const l=(v.lang||'').toLowerCase();return l==='fr-fr'||l.indexOf('fr-fr-')===0||l==='fr';});}catch(e){return[];}}
 function sayStop(){try{if('speechSynthesis' in window)speechSynthesis.cancel();}catch(e){}
-  if(sayAudio){try{sayAudio.pause();}catch(e){}sayAudio=null;}speaking=null;refreshSpeakUI();}
+  if(sayAudio){try{sayAudio.pause();}catch(e){}sayAudio=null;}
+  if(curAudio){try{curAudio.pause();}catch(e){}curAudio=null;}
+  speaking=null;refreshSpeakUI();}
 function refreshSpeakUI(){document.querySelectorAll('[data-say]').forEach(b=>{const on=speaking&&speaking.t==='q'&&speaking.qn===+b.dataset.say;
   b.classList.toggle('on',!!on);b.textContent=on?'⏹ 듣기 중지':'🔊 지문 듣기';});
   document.querySelectorAll('[data-line]').forEach(b=>{const on=speaking&&speaking.t==='p'&&speaking.qn===+b.dataset.q&&speaking.pi===+b.dataset.p;
@@ -200,18 +202,32 @@ function speakText(text,key){
   googleSay(text,key,done);}
 function paraText(qn,pi){const q=DATA.find(x=>x.n==qn);if(!q||!q.paras[pi])return'';
   return q.paras[pi].map(t=>t.x).join('').replace(/\s+/g,' ').trim();}
+function playQueue(urls,key,fallbackFn){
+  let i=0;
+  const step=()=>{
+    if(speaking!==key)return;
+    if(i>=urls.length){speaking=null;refreshSpeakUI();return;}
+    const a=new Audio(urls[i++]);curAudio=a;
+    const fail=()=>{if(speaking!==key)return;curAudio=null;
+      if(fallbackFn){const t=fallbackFn();refreshSpeakUI();if(t)speakText(t,key);else{speaking=null;refreshSpeakUI();}}
+      else{speaking=null;refreshSpeakUI();}};
+    a.onended=step;a.onerror=fail;
+    try{const r=a.play();if(r&&r.catch)r.catch(fail);}catch(e){fail();}};
+  step();}
+function paraUrls(qn){const q=DATA.find(x=>x.n==qn);if(!q)return[];
+  return q.paras.map((_,pi)=>'audio/q'+qn+'p'+pi+'.mp3');}
 function sayQuestion(btn){const qn=+btn.dataset.say;
   if(speaking&&speaking.t==='q'&&speaking.qn===qn){sayStop();return;}
   sayStop();
-  const text=questionText(qn);
-  if(!text){toast('읽을 지문이 없어요');return;}
-  const key={t:'q',qn};speaking=key;refreshSpeakUI();speakText(text,key);}
+  const urls=paraUrls(qn);
+  if(!urls.length){toast('읽을 지문이 없어요');return;}
+  const key={t:'q',qn};speaking=key;refreshSpeakUI();
+  playQueue(urls,key,()=>questionText(qn));}
 function sayLine(btn){const qn=+btn.dataset.q,pi=+btn.dataset.p;
   if(speaking&&speaking.t==='p'&&speaking.qn===qn&&speaking.pi===pi){sayStop();return;}
   sayStop();
-  const text=paraText(qn,pi);
-  if(!text){toast('읽을 문단이 없어요');return;}
-  const key={t:'p',qn,pi};speaking=key;refreshSpeakUI();speakText(text,key);}
+  const key={t:'p',qn,pi};speaking=key;refreshSpeakUI();
+  playQueue(['audio/q'+qn+'p'+pi+'.mp3'],key,()=>paraText(qn,pi));}
 function saySelection(text){sayStop();const key={t:'sel'};speaking=key;refreshSpeakUI();speakText(text,key);}
 let selTimer=null,selText='';
 function hideSelSay(){const b=document.getElementById('selSay');if(b)b.style.display='none';selText='';}

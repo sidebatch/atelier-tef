@@ -608,18 +608,18 @@
         return;
       }
       const voices = availableFrenchVoices();
-      const franceVoice = voices.find(voice => (voice.lang || "").toLowerCase() === "fr-fr") || voices[0];
-      if (!franceVoice) {
+      const franceVoice = voices.find(voice => (voice.lang || "").toLowerCase() === "fr-fr") || voices[0] || null;
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(spokenText);
+        utterance.lang = "fr-FR";
+        if (franceVoice) utterance.voice = franceVoice;
+        utterance.rate = 0.84;
+        utterance.pitch = 1;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
         playOnlineFrench(spokenText);
-        return;
       }
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(spokenText);
-      utterance.lang = "fr-FR";
-      utterance.voice = franceVoice;
-      utterance.rate = 0.84;
-      utterance.pitch = 1;
-      window.speechSynthesis.speak(utterance);
     }
 
     function playOnlineFrench(text) {
