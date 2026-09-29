@@ -35,6 +35,7 @@ const { chromium } = require("C:/Users/leeks/.cache/codex-runtimes/codex-primary
     await page.locator("#revealBtn").tap();
     await page.locator("#rightBtn").tap();
   }
+  if ((await page.locator("#correctCount").innerText()).trim() !== "0") throw new Error("Single O attempts were counted as completed cards");
   if (!(await page.locator(".prompt").innerText()).includes("avoir besoin de")) throw new Error("Wrong card did not return after ten cards");
   await page.locator("#revealBtn").tap();
   await page.locator("#wrongBtn").tap();
@@ -43,9 +44,18 @@ const { chromium } = require("C:/Users/leeks/.cache/codex-runtimes/codex-primary
   if (!(await page.locator("#pronounceBtn").isHidden())) throw new Error("Reverse-mode audio should stay hidden before reveal");
   await page.locator("#revealBtn").tap();
   if (!(await page.locator("#pronounceBtn").isVisible())) throw new Error("Reverse-mode audio did not appear after reveal");
+  await page.evaluate(() => {
+    const id = getQueue()[0];
+    progressOf(id).streak = 2;
+    revealed = false;
+    render();
+  });
+  await page.locator("#revealBtn").tap();
+  await page.locator("#rightBtn").tap();
+  if ((await page.locator("#correctCount").innerText()).trim() !== "1") throw new Error("Third consecutive O did not count one completed card");
   if (errors.length) throw new Error(errors.join(" | "));
 
-  console.log("PASS: mobile audio and controls work; repeated X counts one unique wrong card");
+  console.log("PASS: mobile audio works; X counts unique wrong cards; O counts only cards completed after three correct recalls");
   await browser.close();
 })().catch(error => {
   console.error(error);
