@@ -337,7 +337,7 @@
     const main = $("#main");
 
     function freshState() {
-      return { version: SCHEMA_VERSION, date: TODAY, direction: "fr-ko", mode: "all", session: 1, deck: "base", daily: { o: 0, x: 0, wrongIds: [], completedIds: [] }, progress: {}, queues: {} };
+      return { version: SCHEMA_VERSION, date: TODAY, direction: "fr-ko", mode: "all", session: 1, deck: "base", dailyByDeck: {}, progress: {}, queues: {} };
     }
 
     function loadState() {
@@ -352,11 +352,14 @@
       }
       if (next.date !== TODAY) {
         next.date = TODAY;
-        next.daily = { o: 0, x: 0, wrongIds: [], completedIds: [] };
+        next.dailyByDeck = {};
       }
-      next.daily ||= { o: 0, x: 0, wrongIds: [], completedIds: [] };
-      next.daily.wrongIds ||= [];
-      next.daily.completedIds ||= [];
+      // Migrate old global daily to per-deck shape
+      if (next.daily && !next.dailyByDeck) {
+        next.dailyByDeck = { [next.deck || "base"]: next.daily };
+      }
+      delete next.daily;
+      next.dailyByDeck ||= {};
       next.progress ||= {};
       next.queues ||= {};
       if (!DECKS.some(item => item.id === next.deck)) next.deck = "base";
@@ -366,21 +369,36 @@
         next.progress[card.id]["ko-fr"] ||= { streak: 0, o: 0, x: 0 };
       }
       if (migratingDailyCounts && sameStudyDay) {
-        next.daily.wrongIds = CARDS.filter(card => {
+        const deckKey = next.deck || "base";
+        const migrated = (next.dailyByDeck[deckKey] ||= { o: 0, x: 0, wrongIds: [], completedIds: [] });
+        migrated.wrongIds = CARDS.filter(card => {
           const progress = next.progress[card.id];
           return progress["fr-ko"].x + progress["ko-fr"].x > 0;
         }).map(card => card.id);
-        next.daily.completedIds = CARDS.filter(card => {
+        migrated.completedIds = CARDS.filter(card => {
           const progress = next.progress[card.id];
           return progress["fr-ko"].streak >= MASTERY || progress["ko-fr"].streak >= MASTERY;
         }).map(card => card.id);
       }
-      next.daily.x = next.daily.wrongIds.length;
-      next.daily.o = next.daily.completedIds.length;
+      for (const deckKey of Object.keys(next.dailyByDeck)) {
+        const d = next.dailyByDeck[deckKey];
+        d.wrongIds ||= [];
+        d.completedIds ||= [];
+        d.x = d.wrongIds.length;
+        d.o = d.completedIds.length;
+      }
       return next;
     }
 
     let state = loadState();
+
+    function dailyOf(deck = state.deck) {
+      state.dailyByDeck ||= {};
+      const d = (state.dailyByDeck[deck] ||= { o: 0, x: 0, wrongIds: [], completedIds: [] });
+      d.wrongIds ||= [];
+      d.completedIds ||= [];
+      return d;
+    }
 
     function save() {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -440,8 +458,8 @@
       $("#doneCount").textContent = done;
       $("#totalCount").textContent = ` / ${cards.length}`;
       $("#remainingCount").textContent = cards.length - done;
-      $("#correctCount").textContent = state.daily.o;
-      $("#wrongCount").textContent = state.daily.x;
+      $("#correctCount").textContent = dailyOf().o;
+      $("#wrongCount").textContent = dailyOf().x;
       $("#progressFill").style.width = `${cards.length ? (done / cards.length) * 100 : 0}%`;
       const hard = cards.filter(card => wrongTotal(card.id) > 0).length;
       $("#hardBadge").textContent = hard;
@@ -646,14 +664,16 @@
           const delay = p.streak === 1 ? 12 : 18;
           queue.splice(Math.min(delay, queue.length), 0, id);
         } else {
-          if (!state.daily.completedIds.includes(id)) state.daily.completedIds.push(id);
-          state.daily.o = state.daily.completedIds.length;
+          const d = dailyOf();
+          if (!d.completedIds.includes(id)) d.completedIds.push(id);
+          d.o = d.completedIds.length;
           showToast("완료! 연속 3회 정답");
         }
       } else {
         p.x += 1; p.streak = 0;
-        if (!state.daily.wrongIds.includes(id)) state.daily.wrongIds.push(id);
-        state.daily.x = state.daily.wrongIds.length;
+        const d = dailyOf();
+        if (!d.wrongIds.includes(id)) d.wrongIds.push(id);
+        d.x = d.wrongIds.length;
         const delay = state.mode === "hard" ? 3 : 10;
         queue.splice(Math.min(delay, queue.length), 0, id);
       }
