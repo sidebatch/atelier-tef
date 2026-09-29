@@ -174,6 +174,16 @@
     }
     .pronounce-btn:hover { border-color: #9fc5ad; background: #d8ecdf; }
     .answer .pronounce-btn { margin-top: 16px; }
+    .pronounce-btn.playing {
+      border-color: #c9a24b;
+      background: #f3e6c8;
+      color: #8a6d1f;
+      animation: pronounce-pulse 1s ease-in-out infinite;
+    }
+    @keyframes pronounce-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(201, 162, 75, .55); }
+      50% { box-shadow: 0 0 0 12px rgba(201, 162, 75, 0); }
+    }
     .streak { display: flex; gap: 5px; align-items: center; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #ded8cb; }
     .dot.on { background: var(--green); }
@@ -471,6 +481,56 @@
     const frenchAudioCache = new Map();
     const HAS_HOSTED_AUDIO = /^(L[1-5]|L8)-/;
     function frenchAudioUrl(cardId) { return `audio/${encodeURIComponent(cardId)}.mp3`; }
+    function markPronouncing(on) {
+      document.querySelectorAll(".pronounce-btn").forEach(btn => btn.classList.toggle("playing", on));
+    }
+    function hookPronounceEnd(audio) {
+      if (audio._pronounceHooked) return;
+      audio._pronounceHooked = true;
+      audio.addEventListener("ended", () => markPronouncing(false));
+      audio.addEventListener("pause", () => markPronouncing(false));
+    }
+    let sfxCtx = null;
+    function sfxContext() {
+      if (!sfxCtx) {
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return null;
+        sfxCtx = new Ctor();
+      }
+      if (sfxCtx.state === "suspended") sfxCtx.resume();
+      return sfxCtx;
+    }
+    function paperSwish(fromFreq, toFreq, duration, peakGain) {
+      const ctx = sfxContext();
+      if (!ctx) return;
+      try {
+        const t = ctx.currentTime;
+        const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+        const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.Q.value = 1.1;
+        filter.frequency.setValueAtTime(fromFreq, t);
+        filter.frequency.exponentialRampToValueAtTime(Math.max(40, toFreq), t + duration);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(peakGain, t + duration * 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(t);
+        source.stop(t + duration + 0.05);
+      } catch (_) {}
+    }
+    function gradeSound(correct) {
+      if (correct) paperSwish(1500, 3400, 0.16, 0.20);
+      else paperSwish(1000, 380, 0.24, 0.26);
+    }
     function prefetchFrenchAudio(cardId) {
       if (!cardId || !HAS_HOSTED_AUDIO.test(cardId) || frenchAudioCache.has(cardId)) return;
       try {
@@ -790,9 +850,11 @@
       };
       onlineFrenchAudio = audio;
       audio.addEventListener("error", fallback, { once: true });
+      hookPronounceEnd(audio);
       try { audio.currentTime = 0; } catch (_) {}
+      markPronouncing(true);
       const playPromise = audio.play();
-      if (playPromise) playPromise.catch(fallback);
+      if (playPromise) playPromise.catch(() => { markPronouncing(false); fallback(); });
     }
 
     function playNativeOrOnlineFrench(spokenText) {
@@ -809,7 +871,13 @@
         if (franceVoice) utterance.voice = franceVoice;
         utterance.rate = 0.84;
         utterance.pitch = 1;
+        let ended = false;
+        const clearMark = () => { if (!ended) { ended = true; markPronouncing(false); } };
+        utterance.onend = clearMark;
+        utterance.onerror = clearMark;
+        setTimeout(clearMark, 15000);
         window.speechSynthesis.speak(utterance);
+        markPronouncing(true);
       } catch (e) {
         playOnlineFrench(spokenText);
       }
@@ -824,8 +892,12 @@
       const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=fr&q=${encodeURIComponent(text)}`;
       const audio = new Audio(url);
       onlineFrenchAudio = audio;
-      audio.addEventListener("error", () => showToast("온라인 발음을 재생하지 못했어요. 인터넷 연결을 확인해 주세요."), { once: true });
-      audio.play().catch(() => showToast("온라인 발음을 재생하지 못했어요. 인터넷 연결을 확인해 주세요."));
+      hookPronounceEnd(audio);
+      const onlineFail = () => { markPronouncing(false); showToast("온라인 발음을 재생하지 못했어요. 인터넷 연결을 확인해 주세요."); };
+      audio.addEventListener("error", onlineFail, { once: true });
+      markPronouncing(true);
+      const onlinePromise = audio.play();
+      if (onlinePromise) onlinePromise.catch(onlineFail);
     }
 
     function applyGrade(correct) {
@@ -856,6 +928,7 @@
     }
     function grade(correct) {
       if (!revealed) return;
+      gradeSound(correct);
       applyGrade(correct);
       revealed = false;
       render();
