@@ -714,14 +714,20 @@
     // 뒤로가기로 앱이 바로 꺼지지 않게: 종료 확인창(예/아니오)
     let exitOpen = false;
     let expectPop = false;
-    function armBackGuard() { try { history.pushState({ backGuard: true }, ""); } catch (_) {} }
+    let guardArmed = false;
+    function armBackGuard() {
+      if (guardArmed || exitOpen || document.querySelector("dialog[open]")) return;
+      guardArmed = true;
+      try { history.pushState({ backGuard: true }, ""); } catch (_) {}
+    }
     armBackGuard();
     window.addEventListener("popstate", () => {
+      guardArmed = false;
       if (expectPop) { expectPop = false; armBackGuard(); return; }
       const otherDialog = document.querySelector("dialog[open]:not(#exitDialog)");
       if (otherDialog) { otherDialog.close(); armBackGuard(); return; }
       if (exitOpen) {
-        // 확인창이 열린 상태에서 뒤로가기 = 아니오
+        // 확인창이 열린 상태에서 뒤로가기 = 아니오 (창만 닫고 종료 안 함)
         exitOpen = false;
         $("#exitDialog").close();
         armBackGuard();
@@ -731,6 +737,9 @@
       $("#exitDialog").showModal();
       try { history.pushState({ exitDialog: true }, ""); } catch (_) {}
     });
+    // 백그라운드에서 돌아왔을 때 가드가 풀려 있으면 다시 걸기
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) armBackGuard(); });
+    window.addEventListener("pageshow", () => armBackGuard());
     function cancelExit() {
       if (!exitOpen) return;
       exitOpen = false;
