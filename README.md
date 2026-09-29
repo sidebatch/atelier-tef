@@ -1,10 +1,11 @@
-# TEF 5시간 어휘 암기
+# TEF Atelier
 
+TEF Canada 대비 어휘 · 리딩 학습 아틀리에.
 TEF LEXIQUE 1-5의 500개 어휘 + B1-B2 1401개 어휘(LEXIQUE 6), 총 1901개를 복습하는 단일 페이지 앱입니다.
 
 ## 바로 실행
 
-**[TEF 어휘 암기앱 열기](https://sidebatch.github.io/tef-5-hour-vocab/)**
+**[TEF Atelier 열기](https://sidebatch.github.io/tef-5-hour-vocab/)**
 
 **[CE 리딩 문제 풀기](https://sidebatch.github.io/tef-5-hour-vocab/ce.html)**
 
