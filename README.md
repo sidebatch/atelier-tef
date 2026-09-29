@@ -5,9 +5,9 @@ TEF LEXIQUE 1-5의 500개 어휘 + B1-B2 1401개 어휘(LEXIQUE 6), 총 1901개�
 
 ## 바로 실행
 
-**[TEF Atelier 열기](https://sidebatch.github.io/tef-5-hour-vocab/)**
+**[TEF Atelier 열기](https://sidebatch.github.io/atelier-tef/)**
 
-**[CE 리딩 문제 풀기](https://sidebatch.github.io/tef-5-hour-vocab/ce.html)**
+**[CE 리딩 문제 풀기](https://sidebatch.github.io/atelier-tef/ce.html)**
 
 ## 단어장 선택
 
