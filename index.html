@@ -537,7 +537,7 @@
         filter.frequency.exponentialRampToValueAtTime(Math.max(40, toFreq), t + duration);
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(peakGain, t + duration * 0.3);
+        gain.gain.exponentialRampToValueAtTime(peakGain, t + 0.015);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
         source.connect(filter);
         filter.connect(gain);
@@ -549,6 +549,27 @@
     function gradeSound(correct) {
       if (correct) paperSwish(1500, 3400, 0.13, 0.20);
       else paperSwish(1000, 380, 0.19, 0.26);
+    }
+    function masteryChime() {
+      const ctx = sfxContext();
+      if (!ctx) return;
+      try {
+        const t = ctx.currentTime + 0.02;
+        [[880, 0], [1174.66, 0.1]].forEach(([freq, delay]) => {
+          const osc = ctx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          const gain = ctx.createGain();
+          const start = t + delay;
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.16, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.45);
+        });
+      } catch (_) {}
     }
     function prefetchFrenchAudio(cardId) {
       if (!cardId || !HAS_HOSTED_AUDIO.test(cardId) || frenchAudioCache.has(cardId)) return;
@@ -948,6 +969,7 @@
           if (!d.completedIds.includes(id)) d.completedIds.push(id);
           d.o = d.completedIds.length;
           showToast("완료! 연속 3회 정답");
+          masteryChime();
         }
       } else {
         p.x += 1; p.streak = 0;
