@@ -352,6 +352,8 @@
     let typeChecked = false;
 
     function normFr(s) { return String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[.!?]+$/g, "").trim().replace(/\s+/g, " "); }
+    // 입력 정규화: 화면에 보이는 형태((f.), a / b)를 그대로 따라 써도 정답이 되도록 괄호를 제거
+    function cleanInput(s) { return normFr(s).replace(/\s*\([^)]*\)/g, " ").trim().replace(/\s+/g, " "); }
     function stripAccents(s) { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
     // 핵심 단어만 남기기: 관사(l', le/la/les/un/une/des), 재귀대명사(s', se),
     // 끝 전치사(de/à/…), +inf 표기를 제거. d'/du/de la는 고정 표현이 많아 제거하지 않음.
@@ -375,10 +377,13 @@
       const card = CARDS.find(item => item.id === queue[0]);
       if (!card) return;
       const answers = acceptableAnswers(card);
-      const n = normFr(raw);
+      const n = cleanInput(raw);
+      const parts = n.split("/").map(x => x.trim()).filter(Boolean);
+      const hit = x => answers.some(a => normFr(a) === x || stripAccents(normFr(a)) === stripAccents(x));
       let result = "wrong";
       if (!gaveUp) {
-        if (answers.some(a => normFr(a) === n)) result = "correct";
+        if (parts.length > 1 && parts.every(hit)) result = "correct";
+        else if (answers.some(a => normFr(a) === n)) result = "correct";
         else if (answers.some(a => stripAccents(normFr(a)) === stripAccents(n))) result = "accent";
         else if (answers.some(a => {
           const full = normFr(a), core = coreForm(full);
