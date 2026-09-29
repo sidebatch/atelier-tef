@@ -17,6 +17,15 @@ const { chromium } = require("C:/Users/leeks/.cache/codex-runtimes/codex-primary
   page.on("pageerror", error => errors.push(String(error)));
   const url = pathToFileURL(path.resolve(__dirname, "..", "index.html")).href;
   await page.goto(url);
+  const cleaned = await page.evaluate(() => [
+    cleanFrenchForSpeech("oser + inf"),
+    cleanFrenchForSpeech("avoir de la peine à +inf"),
+    cleanFrenchForSpeech("afin de+inf / que+sub"),
+    cleanFrenchForSpeech("faute de qc/inf"),
+    cleanFrenchForSpeech("l'écologie (f.)"),
+  ]);
+  const expectedCleaned = ["oser", "avoir de la peine à", "afin de / que", "faute de", "l'écologie"];
+  if (JSON.stringify(cleaned) !== JSON.stringify(expectedCleaned)) throw new Error(`Speech cleanup mismatch: ${JSON.stringify(cleaned)}`);
   await page.locator("#pronounceBtn").tap();
   await page.waitForTimeout(1200);
 
@@ -55,7 +64,7 @@ const { chromium } = require("C:/Users/leeks/.cache/codex-runtimes/codex-primary
   if ((await page.locator("#correctCount").innerText()).trim() !== "1") throw new Error("Third consecutive O did not count one completed card");
   if (errors.length) throw new Error(errors.join(" | "));
 
-  console.log("PASS: mobile audio works; X counts unique wrong cards; O counts only cards completed after three correct recalls");
+  console.log("PASS: mobile audio omits grammar labels; X counts unique wrong cards; O counts only mastered cards");
   await browser.close();
 })().catch(error => {
   console.error(error);

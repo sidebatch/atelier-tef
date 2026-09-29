@@ -9,19 +9,25 @@ if (!match) throw new Error("Could not find embedded card data");
 
 const cards = JSON.parse(match[1]);
 if (cards.length !== 500) throw new Error(`Expected 500 cards, found ${cards.length}`);
+const force = process.argv.includes("--force");
 
 const outputDir = path.join(root, "audio");
 await fs.mkdir(outputDir, { recursive: true });
 
 function spokenText(text) {
-  return text.replace(/\s*\([fm]\.\)/gi, "").replace(/\s{2,}/g, " ").trim();
+  return text
+    .replace(/\s*\([fm]\.\)/gi, "")
+    .replace(/\s*\+\s*(?:inf|ind|sub|cond|qc)(?:\s*\/\s*(?:inf|ind|sub|cond|qc))*/gi, "")
+    .replace(/\s+(?:qc|inf|ind|sub|cond)(?:\s*\/\s*(?:qc|inf|ind|sub|cond))*\s*$/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 async function download(card, attempt = 1) {
   const output = path.join(outputDir, `${card.id}.mp3`);
   try {
     const existing = await fs.stat(output).catch(() => null);
-    if (existing?.size > 500) return;
+    if (!force && existing?.size > 500) return;
 
     const query = encodeURIComponent(spokenText(card.fr));
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=fr&q=${query}`;

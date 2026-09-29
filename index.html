@@ -546,8 +546,17 @@
       });
     }
 
+    function cleanFrenchForSpeech(text) {
+      return text
+        .replace(/\s*\([fm]\.\)/gi, "")
+        .replace(/\s*\+\s*(?:inf|ind|sub|cond|qc)(?:\s*\/\s*(?:inf|ind|sub|cond|qc))*/gi, "")
+        .replace(/\s+(?:qc|inf|ind|sub|cond)(?:\s*\/\s*(?:qc|inf|ind|sub|cond))*\s*$/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+
     function pronounce(text, cardId) {
-      const spokenText = text.replace(/\s*\([fm]\.\)/gi, "").replace(/\s{2,}/g, " ").trim();
+      const spokenText = cleanFrenchForSpeech(text);
       playHostedFrench(cardId, spokenText);
     }
 
