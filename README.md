@@ -2,6 +2,10 @@
 
 TEF LEXIQUE 1-5의 500개 어휘를 오늘 집중 암기용으로 복습하는 단일 페이지 앱입니다.
 
+## 바로 실행
+
+**[TEF 어휘 암기앱 열기](https://sidebatch.github.io/tef-5-hour-vocab/)**
+
 ## 사용법
 
 `index.html`을 브라우저로 열면 됩니다. 진행 상황은 해당 브라우저에 자동 저장됩니다.
