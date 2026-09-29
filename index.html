@@ -253,6 +253,12 @@
       padding: 0; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(30, 35, 32, .25);
     }
     dialog::backdrop { background: rgba(25, 31, 28, .42); backdrop-filter: blur(4px); }
+    #exitDialog { width: min(340px, calc(100% - 56px)); }
+    .exit-body { padding: 26px 22px 22px; text-align: center; }
+    .exit-body p { margin: 0 0 20px; font-size: 16px; font-weight: 750; }
+    .exit-actions { display: flex; gap: 8px; }
+    .exit-actions button { flex: 1; min-height: 46px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 15px; font-weight: 800; }
+    #exitYesBtn { background: var(--ink); border-color: var(--ink); color: #fff; }
     .modal-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px 14px; background: rgba(255, 253, 248, .96); border-bottom: 1px solid var(--line); }
     .modal-head h2 { margin: 0; font-size: 19px; }
     .modal-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
@@ -344,6 +350,15 @@
     <div class="modal-body" id="hardList"></div>
     <div class="modal-foot">
       <button class="icon-btn" id="studyHardBtn" type="button">오답만 학습</button>
+    </div>
+  </dialog>
+  <dialog id="exitDialog" aria-label="앱 종료 확인">
+    <div class="exit-body">
+      <p>종료하시겠습니까?</p>
+      <div class="exit-actions">
+        <button type="button" id="exitNoBtn">아니오</button>
+        <button type="button" id="exitYesBtn">예</button>
+      </div>
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -696,21 +711,36 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    // 뒤로가기 한 번에 앱이 꺼지지 않게: 2초 안에 두 번 눌러야 종료
-    let lastBackPressAt = 0;
-    try { history.pushState({ backGuard: true }, ""); } catch (_) {}
+    // 뒤로가기로 앱이 바로 꺼지지 않게: 종료 확인창(예/아니오)
+    let exitOpen = false;
+    let expectPop = false;
+    function armBackGuard() { try { history.pushState({ backGuard: true }, ""); } catch (_) {} }
+    armBackGuard();
     window.addEventListener("popstate", () => {
-      try { history.pushState({ backGuard: true }, ""); } catch (_) {}
-      const openDialog = document.querySelector("dialog[open]");
-      if (openDialog) { openDialog.close(); return; }
-      const now = Date.now();
-      if (now - lastBackPressAt < 2000) {
-        try { history.back(); } catch (_) {}
+      if (expectPop) { expectPop = false; armBackGuard(); return; }
+      const otherDialog = document.querySelector("dialog[open]:not(#exitDialog)");
+      if (otherDialog) { otherDialog.close(); armBackGuard(); return; }
+      if (exitOpen) {
+        // 확인창이 열린 상태에서 뒤로가기 = 아니오
+        exitOpen = false;
+        $("#exitDialog").close();
+        armBackGuard();
         return;
       }
-      lastBackPressAt = now;
-      showToast("한 번 더 누르면 앱이 꺼져요");
+      exitOpen = true;
+      $("#exitDialog").showModal();
+      try { history.pushState({ exitDialog: true }, ""); } catch (_) {}
     });
+    function cancelExit() {
+      if (!exitOpen) return;
+      exitOpen = false;
+      $("#exitDialog").close();
+      expectPop = true;
+      try { history.back(); } catch (_) { expectPop = false; armBackGuard(); }
+    }
+    bindTap($("#exitYesBtn"), () => { try { history.go(-2); } catch (_) {} });
+    bindTap($("#exitNoBtn"), cancelExit);
+    $("#exitDialog").addEventListener("click", event => { if (event.target === $("#exitDialog")) cancelExit(); });
 
     function bindTap(target, handler) {
       target.addEventListener("click", handler);
