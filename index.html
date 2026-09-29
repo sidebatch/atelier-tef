@@ -218,7 +218,7 @@
     .type-result.wrong .type-msg { color: #b91c1c; }
     .type-given { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
     .type-answer { font-size: 18px; }
-    .type-note { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .type-flag { font-size: 13px; color: var(--muted); font-weight: 700; }
     #typePronounceBtn { flex: 1; min-height: 48px; border-radius: 12px; background: rgba(255, 253, 248, .82); border: 1px solid var(--line); font-weight: 700; font-size: 14px; cursor: pointer; color: var(--ink); }
     #typeNextBtn { flex: 1.4; min-height: 48px; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 800; font-size: 16px; border: 1px solid var(--ink); cursor: pointer; }
 
@@ -353,6 +353,17 @@
 
     function normFr(s) { return String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[.!?]+$/g, "").trim().replace(/\s+/g, " "); }
     function stripAccents(s) { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+    // 핵심 단어만 남기기: 관사(l', le/la/les/un/une/des), 재귀대명사(s', se),
+    // 끝 전치사(de/à/…), +inf 표기를 제거. d'/du/de la는 고정 표현이 많아 제거하지 않음.
+    function coreForm(a) {
+      let s = String(a);
+      s = s.replace(/\s*\+\s*[\w/]+$/, "");
+      s = s.replace(/^l'/, "");
+      s = s.replace(/^(le|la|les|un|une|des)\s+/, "");
+      s = s.replace(/^s'/, "").replace(/^se\s+/, "");
+      s = s.replace(/\s+(de|d'|à|au|aux|en|pour|contre|avec|sur|dans|par|sans|chez)$/, "");
+      return s.trim().replace(/\s+/g, " ");
+    }
     function acceptableAnswers(card) {
       return String(card.fr).split("/").map(v => v.replace(/\s*\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim()).filter(Boolean);
     }
@@ -369,6 +380,10 @@
       if (!gaveUp) {
         if (answers.some(a => normFr(a) === n)) result = "correct";
         else if (answers.some(a => stripAccents(normFr(a)) === stripAccents(n))) result = "accent";
+        else if (answers.some(a => {
+          const full = normFr(a), core = coreForm(full);
+          return core && core !== full && stripAccents(core) === stripAccents(n);
+        })) result = "partial";
       }
       applyGrade(result !== "wrong");
       typeChecked = true;
@@ -378,13 +393,14 @@
       const area = $("#typeArea");
       if (!area) return;
       const ok = result !== "wrong";
-      const msg = result === "correct" ? "⭕ 맞았어요!" : result === "accent" ? "⭕ 맞았어요! (악센트 확인)" : "❌ 틀렸어요";
+      const flag = result === "accent" ? ' <span class="type-flag">악센트 확인</span>'
+        : result === "partial" ? ' <span class="type-flag">정확한 형태 확인</span>' : "";
+      const msg = ok ? "⭕ 맞았어요!" + flag : "❌ 틀렸어요";
       area.innerHTML =
         '<div class="type-result ' + (ok ? "correct" : "wrong") + '">' +
           '<div class="type-msg">' + msg + "</div>" +
           (ok ? "" : '<div class="type-given">입력: ' + (escapeHtml(raw) || "(비어 있음)") + "</div>") +
           '<div class="type-answer">정답: <b>' + escapeHtml(card.fr) + "</b></div>" +
-          (result === "accent" ? '<div class="type-note">악센트를 포함한 정확한 표기를 확인하세요.</div>' : "") +
           '<div class="type-btns" style="margin-top:10px">' +
             '<button id="typePronounceBtn" type="button">🔊 발음 듣기</button>' +
             '<button id="typeNextBtn" type="button">다음 →</button>' +
