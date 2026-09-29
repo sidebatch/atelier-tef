@@ -488,7 +488,6 @@
       if (audio._pronounceHooked) return;
       audio._pronounceHooked = true;
       audio.addEventListener("ended", () => markPronouncing(false));
-      audio.addEventListener("pause", () => markPronouncing(false));
     }
     let sfxCtx = null;
     let sfxNoise = null;
@@ -501,6 +500,7 @@
       if (sfxCtx.state === "suspended") sfxCtx.resume();
       return sfxCtx;
     }
+    try { sfxContext(); } catch (_) {}
     function warmSfx() {
       const ctx = sfxContext();
       if (!ctx || sfxNoise) return;
@@ -538,8 +538,8 @@
       } catch (_) {}
     }
     function gradeSound(correct) {
-      if (correct) paperSwish(1500, 3400, 0.16, 0.20);
-      else paperSwish(1000, 380, 0.24, 0.26);
+      if (correct) paperSwish(1500, 3400, 0.13, 0.20);
+      else paperSwish(1000, 380, 0.19, 0.26);
     }
     function prefetchFrenchAudio(cardId) {
       if (!cardId || !HAS_HOSTED_AUDIO.test(cardId) || frenchAudioCache.has(cardId)) return;
@@ -842,7 +842,9 @@
       playHostedFrench(cardId, spokenText);
     }
 
+    let frenchPlayToken = 0;
     function playHostedFrench(cardId, spokenText) {
+      const myToken = ++frenchPlayToken;
       if (onlineFrenchAudio) {
         onlineFrenchAudio.pause();
         onlineFrenchAudio = null;
@@ -864,7 +866,11 @@
       try { audio.currentTime = 0; } catch (_) {}
       markPronouncing(true);
       const playPromise = audio.play();
-      if (playPromise) playPromise.catch(() => { markPronouncing(false); fallback(); });
+      if (playPromise) playPromise.catch(() => {
+        if (myToken !== frenchPlayToken) return;
+        markPronouncing(false);
+        fallback();
+      });
     }
 
     function playNativeOrOnlineFrench(spokenText) {
