@@ -28,13 +28,24 @@ const { chromium } = require("C:/Users/leeks/.cache/codex-runtimes/codex-primary
   if (!audio.src.endsWith("/audio/L1-001.mp3")) throw new Error(`Unexpected audio source: ${audio.src}`);
   if (audio.error) throw new Error(`Audio element error code: ${audio.error}`);
   if (audio.readyState < 2) throw new Error(`Audio did not load; readyState=${audio.readyState}`);
+  await page.locator("#revealBtn").tap();
+  await page.locator("#wrongBtn").tap();
+  if ((await page.locator("#wrongCount").innerText()).trim() !== "1") throw new Error("First wrong answer was not counted once");
+  for (let i = 0; i < 10; i += 1) {
+    await page.locator("#revealBtn").tap();
+    await page.locator("#rightBtn").tap();
+  }
+  if (!(await page.locator(".prompt").innerText()).includes("avoir besoin de")) throw new Error("Wrong card did not return after ten cards");
+  await page.locator("#revealBtn").tap();
+  await page.locator("#wrongBtn").tap();
+  if ((await page.locator("#wrongCount").innerText()).trim() !== "1") throw new Error("Repeated wrong answer was counted twice");
   await page.locator("#directionBtn").tap();
   if (!(await page.locator("#pronounceBtn").isHidden())) throw new Error("Reverse-mode audio should stay hidden before reveal");
   await page.locator("#revealBtn").tap();
   if (!(await page.locator("#pronounceBtn").isVisible())) throw new Error("Reverse-mode audio did not appear after reveal");
   if (errors.length) throw new Error(errors.join(" | "));
 
-  console.log("PASS: mobile touch loaded bundled audio; reverse-mode audio appears only after reveal");
+  console.log("PASS: mobile audio and controls work; repeated X counts one unique wrong card");
   await browser.close();
 })().catch(error => {
   console.error(error);
