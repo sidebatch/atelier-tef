@@ -28,9 +28,13 @@ const { chromium } = require("C:/Users/leeks/.cache/codex-runtimes/codex-primary
   if (!audio.src.endsWith("/audio/L1-001.mp3")) throw new Error(`Unexpected audio source: ${audio.src}`);
   if (audio.error) throw new Error(`Audio element error code: ${audio.error}`);
   if (audio.readyState < 2) throw new Error(`Audio did not load; readyState=${audio.readyState}`);
+  await page.locator("#directionBtn").tap();
+  if (!(await page.locator("#pronounceBtn").isHidden())) throw new Error("Reverse-mode audio should stay hidden before reveal");
+  await page.locator("#revealBtn").tap();
+  if (!(await page.locator("#pronounceBtn").isVisible())) throw new Error("Reverse-mode audio did not appear after reveal");
   if (errors.length) throw new Error(errors.join(" | "));
 
-  console.log("PASS: mobile touch loaded the bundled L1-001 French audio file");
+  console.log("PASS: mobile touch loaded bundled audio; reverse-mode audio appears only after reveal");
   await browser.close();
 })().catch(error => {
   console.error(error);
