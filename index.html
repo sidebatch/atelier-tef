@@ -491,6 +491,7 @@
       audio.addEventListener("pause", () => markPronouncing(false));
     }
     let sfxCtx = null;
+    let sfxNoise = null;
     function sfxContext() {
       if (!sfxCtx) {
         const Ctor = window.AudioContext || window.webkitAudioContext;
@@ -500,17 +501,26 @@
       if (sfxCtx.state === "suspended") sfxCtx.resume();
       return sfxCtx;
     }
+    function warmSfx() {
+      const ctx = sfxContext();
+      if (!ctx || sfxNoise) return;
+      try {
+        const length = ctx.sampleRate;
+        sfxNoise = ctx.createBuffer(1, length, ctx.sampleRate);
+        const data = sfxNoise.getChannelData(0);
+        for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+      } catch (_) {}
+    }
+    document.addEventListener("pointerdown", warmSfx, { once: true });
     function paperSwish(fromFreq, toFreq, duration, peakGain) {
       const ctx = sfxContext();
       if (!ctx) return;
       try {
+        warmSfx();
+        if (!sfxNoise) return;
         const t = ctx.currentTime;
-        const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
-        const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
         const source = ctx.createBufferSource();
-        source.buffer = buffer;
+        source.buffer = sfxNoise;
         const filter = ctx.createBiquadFilter();
         filter.type = "bandpass";
         filter.Q.value = 1.1;
@@ -523,7 +533,7 @@
         source.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
-        source.start(t);
+        source.start(t, 0, duration);
         source.stop(t + duration + 0.05);
       } catch (_) {}
     }
