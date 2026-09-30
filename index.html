@@ -732,7 +732,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "10";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "11";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -748,7 +748,7 @@
       if (!el) return;
       const g = window.__backGuard || {};
       let h = "v" + APP_VERSION + " | history.length=" + history.length +
-        " | guardArmed=" + guardArmed + " exitOpen=" + exitOpen + " exiting=" + exiting + " expectPop=" + expectPop +
+        " | guardArmed=" + guardArmed + " exitOpen=" + exitOpen + " yesPressed=" + yesPressed + " restoringGuard=" + restoringGuard + " cancelHandled=" + cancelHandled +
         "\n__backGuard: armed=" + g.armed + " ready=" + g.ready + " lenBefore=" + g.lenBefore + " lenAfter=" + g.lenAfter + " pushErr=" + (g.pushErr || "-") +
         "\n--- log ---\n" + ((window.__dbgEarly || []).concat(__dbgLog)).join("\n");
       el.textContent = h;
@@ -770,13 +770,17 @@
       });
     })();
     // 뒤로가기로 앱이 바로 꺼지지 않게: 종료 확인창(예/아니오)
-    // G: 가드 항목, E: 확인창용 항목. E는 항상 한 칸씩만 pop해서 out-of-range 무시를 피한다.
-    let exitOpen = false;    // 확인창이 열려 있음 (E가 스택에 있음)
-    let exiting = false;     // "예"를 눌러 종료 진행 중
-    let expectPop = false;   // 우리가 의도적으로 E를 팝하는 중
+    // G: 가드 항목, E: 확인창용 항목.
+    // 핵심: JS의 history.back()은 마지막 항목에서 앱을 닫지 못한다(시스템 백키만 가능).
+    // 그래서 "예"는 히스토리를 [N]까지 정리한 뒤 window.close()를 시도하고,
+    // 안 닫히면 "뒤로가기를 한 번 더" 안내한다.
+    let exitOpen = false;       // 확인창이 열려 있음 (E가 스택에 있음)
+    let yesPressed = false;     // "예"를 눌러 종료 시도 중 (가드 복원·확인창 금지)
+    let restoringGuard = false; // "아니오"로 E를 팝하는 중 (팝되면 가드 복원)
+    let cancelHandled = false;  // cancel 이벤트가 popstate보다 먼저 처리됨
     let guardArmed = !!((window.__backGuard || {}).armed);  // head 가드가 이미 걸었으면 true
     function armBackGuard() {
-      if (guardArmed || exitOpen || exiting || document.querySelector("dialog[open]")) return;
+      if (guardArmed || exitOpen || yesPressed || document.querySelector("dialog[open]")) return;
       try { history.pushState({ backGuard: true }, ""); } catch (_) { return; }
       guardArmed = true;
       if (window.__backGuard) window.__backGuard.armed = true;
@@ -790,26 +794,28 @@
       try { history.pushState({ exitDialog: true }, ""); exitOpen = true; }
       catch (_) { exitOpen = false; }
     }
-    // "아니오" 계열: 창을 닫고 E를 정리한 뒤 가드를 다시 건다 (종료 안 함)
+    // "아니오" 계열: 창을 닫고 E를 팝한 뒤 가드를 다시 건다 (종료 안 함)
     function dismissExitDialog() {
-      if (!exitOpen || exiting) return;
+      if (!exitOpen || yesPressed) return;
       exitOpen = false;
       if ($("#exitDialog").open) $("#exitDialog").close();
-      expectPop = true;
-      try { history.back(); } catch (_) { expectPop = false; armBackGuard(); }
+      restoringGuard = true;
+      try { history.back(); } catch (_) { restoringGuard = false; armBackGuard(); }
     }
     armBackGuard();
     function handleBackPop() {
       __dbg("popstate 진입 len=" + history.length);
+      if (yesPressed) { __dbg("예 후 팝: 무시"); return; }
+      if (cancelHandled) { cancelHandled = false; __dbg("cancel이 이미 처리함"); return; }
       disarmGuard();
-      if (exiting) { __dbg("popstate: exiting 체인 계속 len=" + history.length); exitStep(); return; }
-      if (expectPop) { expectPop = false; armBackGuard(); return; }
+      if (restoringGuard) { restoringGuard = false; __dbg("가드 복원"); armBackGuard(); return; }
       const otherDialog = document.querySelector("dialog[open]:not(#exitDialog)");
       if (otherDialog) { otherDialog.close(); armBackGuard(); return; }
       if (exitOpen) {
-        // 브라우저가 E를 직접 팝한 경우: 창만 닫고 가드 복원 (종료 안 함)
+        // 확인창 열린 상태에서 뒤로가기(E 팝): 창만 닫고 가드 복원 (종료 안 함)
         exitOpen = false;
         if ($("#exitDialog").open) $("#exitDialog").close();
+        __dbg("확인창 닫힘: 가드 복원");
         armBackGuard();
         return;
       }
@@ -817,31 +823,39 @@
     }
     if (window.__backGuard) { window.__backGuard.ready = true; window.__backGuard.onPop = handleBackPop; }
     __dbg("main 초기화: guardArmed=" + guardArmed + " len=" + history.length);
-    let exitTries = 0;
-    function exitStep() {
-      // "예" 종료 체인: E→G→A를 한 칸씩 팝. popstate가 안 오면 타임아웃이 보정한다.
-      if (!exiting) return;
-      if (exitTries++ > 8) { exiting = false; __dbg("예: 체인 포기"); return; }
-      __dbg("예: back() 호출 tries=" + exitTries + " len=" + history.length);
-      try { history.back(); } catch (_) {}
-      setTimeout(() => { if (exiting) exitStep(); }, 350);
-    }
     bindTap($("#exitYesBtn"), () => {
-      if (!exitOpen || exiting) return;
-      exiting = true;
+      if (!exitOpen || yesPressed) return;
+      yesPressed = true;
       exitOpen = false;
-      exitTries = 0;
-      $("#exitDialog").close();
-      __dbg("예 탭: 체인 시작 len=" + history.length);
-      exitStep();
+      __dbg("예 탭: 종료 시도 len=" + history.length);
+      try { $("#exitDialog").close(); } catch (_) {}
+      // 히스토리를 [N]까지 정리 (E, G 팝)
+      try { history.go(-(history.length - 1)); } catch (_) {}
+      // 앱 닫기 시도 (PWA에서만 동작할 수 있음)
+      setTimeout(() => { try { window.close(); } catch (_) {} }, 120);
+      // 폴백: 여전히 살아있으면 시스템 백키로 마무리 안내
+      setTimeout(() => {
+        if (!yesPressed) return;
+        yesPressed = false;
+        __dbg("예 폴백: 백키 안내");
+        showToast("뒤로가기 버튼을 한 번 더 누르면 앱이 종료됩니다");
+      }, 700);
     });
     bindTap($("#exitNoBtn"), dismissExitDialog);
     $("#exitDialog").addEventListener("click", event => { if (event.target === $("#exitDialog")) dismissExitDialog(); });
-    // 뒤로가기/Esc로 창이 네이티브로 닫히려고 하면 가로채서 "아니오"와 동일 처리
+    // 뒤로가기/Esc로 창이 네이티브로 닫히려고 하면: 창만 닫고 가드 복원 (앱 유지)
     $("#exitDialog").addEventListener("cancel", event => {
-      if (!exitOpen || exiting) return;
       event.preventDefault();
-      dismissExitDialog();
+      if (yesPressed) return;
+      if (exitOpen) {
+        exitOpen = false;
+        cancelHandled = true;  // 뒤이어 올 popstate가 중복 처리하지 않게
+        try { if ($("#exitDialog").open) $("#exitDialog").close(); } catch (_) {}
+        __dbg("cancel: 창 닫힘, 가드 복원");
+        armBackGuard();
+      } else {
+        armBackGuard();  // 안전망
+      }
     });
     // 백그라운드에서 돌아왔을 때 가드가 풀려 있으면 다시 걸기
     document.addEventListener("visibilitychange", () => { if (!document.hidden) armBackGuard(); });
