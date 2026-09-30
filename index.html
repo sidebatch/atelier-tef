@@ -712,44 +712,63 @@
     }
 
     // 뒤로가기로 앱이 바로 꺼지지 않게: 종료 확인창(예/아니오)
-    let exitOpen = false;
-    let expectPop = false;
-    let guardArmed = false;
+    // G: 가드 항목, E: 확인창용 항목. E는 항상 한 칸씩만 pop해서 out-of-range 무시를 피한다.
+    let exitOpen = false;    // 확인창이 열려 있음 (E가 스택에 있음)
+    let exiting = false;     // "예"를 눌러 종료 진행 중
+    let expectPop = false;   // 우리가 의도적으로 E를 팝하는 중
+    let guardArmed = false;  // G가 스택 최상단에 있음
     function armBackGuard() {
-      if (guardArmed || exitOpen || document.querySelector("dialog[open]")) return;
+      if (guardArmed || exitOpen || exiting || document.querySelector("dialog[open]")) return;
       guardArmed = true;
       try { history.pushState({ backGuard: true }, ""); } catch (_) {}
+    }
+    function openExitDialog() {
+      $("#exitDialog").showModal();
+      try { history.pushState({ exitDialog: true }, ""); exitOpen = true; }
+      catch (_) { exitOpen = false; }
+    }
+    // "아니오" 계열: 창을 닫고 E를 정리한 뒤 가드를 다시 건다 (종료 안 함)
+    function dismissExitDialog() {
+      if (!exitOpen || exiting) return;
+      exitOpen = false;
+      if ($("#exitDialog").open) $("#exitDialog").close();
+      expectPop = true;
+      try { history.back(); } catch (_) { expectPop = false; armBackGuard(); }
     }
     armBackGuard();
     window.addEventListener("popstate", () => {
       guardArmed = false;
+      if (exiting) { exiting = false; try { history.back(); } catch (_) {} return; }
       if (expectPop) { expectPop = false; armBackGuard(); return; }
       const otherDialog = document.querySelector("dialog[open]:not(#exitDialog)");
       if (otherDialog) { otherDialog.close(); armBackGuard(); return; }
       if (exitOpen) {
-        // 확인창이 열린 상태에서 뒤로가기 = 아니오 (창만 닫고 종료 안 함)
+        // 브라우저가 E를 직접 팝한 경우: 창만 닫고 가드 복원 (종료 안 함)
         exitOpen = false;
-        $("#exitDialog").close();
+        if ($("#exitDialog").open) $("#exitDialog").close();
         armBackGuard();
         return;
       }
-      exitOpen = true;
-      $("#exitDialog").showModal();
-      try { history.pushState({ exitDialog: true }, ""); } catch (_) {}
+      openExitDialog();
+    });
+    bindTap($("#exitYesBtn"), () => {
+      if (!exitOpen || exiting) return;
+      exiting = true;
+      exitOpen = false;
+      $("#exitDialog").close();
+      try { history.back(); } catch (_) { exiting = false; }  // E 팝 → popstate에서 한 칸 더 → 앱 종료
+    });
+    bindTap($("#exitNoBtn"), dismissExitDialog);
+    $("#exitDialog").addEventListener("click", event => { if (event.target === $("#exitDialog")) dismissExitDialog(); });
+    // 뒤로가기/Esc로 창이 네이티브로 닫히려고 하면 가로채서 "아니오"와 동일 처리
+    $("#exitDialog").addEventListener("cancel", event => {
+      if (!exitOpen || exiting) return;
+      event.preventDefault();
+      dismissExitDialog();
     });
     // 백그라운드에서 돌아왔을 때 가드가 풀려 있으면 다시 걸기
     document.addEventListener("visibilitychange", () => { if (!document.hidden) armBackGuard(); });
     window.addEventListener("pageshow", () => armBackGuard());
-    function cancelExit() {
-      if (!exitOpen) return;
-      exitOpen = false;
-      $("#exitDialog").close();
-      expectPop = true;
-      try { history.back(); } catch (_) { expectPop = false; armBackGuard(); }
-    }
-    bindTap($("#exitYesBtn"), () => { try { history.go(-2); } catch (_) {} });
-    bindTap($("#exitNoBtn"), cancelExit);
-    $("#exitDialog").addEventListener("click", event => { if (event.target === $("#exitDialog")) cancelExit(); });
 
     function bindTap(target, handler) {
       target.addEventListener("click", handler);
