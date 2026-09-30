@@ -4,11 +4,17 @@
   <script>
   /* 앱 로드 전 뒤로가기 가드: 무거운 본문 스크립트가 실행되기 전에 히스토리 가드를 먼저 겁니다.
      본문 스크립트가 준비되면 ready/onPop을 통해 실제 종료 확인창 로직으로 넘깁니다. */
-  window.__backGuard = { armed: false, ready: false, onPop: null };
-  try { history.pushState({ backGuard: true }, ""); window.__backGuard.armed = true; } catch (_) {}
+  window.__backGuard = { armed: false, ready: false, onPop: null, lenBefore: -1, lenAfter: -1, pushErr: "" };
+  window.__dbgEarly = [];
+  try { window.__backGuard.lenBefore = history.length; } catch (_) {}
+  try { history.pushState({ backGuard: true }, ""); window.__backGuard.armed = true; }
+  catch (e) { window.__backGuard.pushErr = String(e && e.message || e); }
+  try { window.__backGuard.lenAfter = history.length; } catch (_) {}
+  window.__dbgEarly.push("head: pushState len " + window.__backGuard.lenBefore + "->" + window.__backGuard.lenAfter + (window.__backGuard.pushErr ? " ERR:" + window.__backGuard.pushErr : ""));
   window.addEventListener("popstate", function () {
     var g = window.__backGuard;
     g.armed = false;
+    (window.__dbgEarly = window.__dbgEarly || []).push("head: popstate len=" + history.length);
     if (g.ready && g.onPop) { g.onPop(); return; }
     try { history.pushState({ backGuard: true }, ""); g.armed = true; } catch (_) {}
   });
@@ -324,6 +330,7 @@
         <button class="icon-btn" id="resetBtn" type="button" aria-label="전체 초기화">↺ <span class="reset-label">초기화</span></button>
       </div>
     </header>
+    <div id="dbgOverlay" style="display:none;position:fixed;top:0;left:0;right:0;max-height:46vh;overflow:auto;background:rgba(0,0,0,.88);color:#fff;font:11px/1.5 monospace;z-index:9999;padding:10px;white-space:pre-wrap;"></div>
 
     <section class="stats" aria-label="학습 통계">
       <div class="stat">
@@ -723,7 +730,43 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "8";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "9";  // 배포할 때마다 version.txt와 함께 올리기
+    // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
+    const __dbgLog = [];
+    function __dbg(msg) {
+      try {
+        __dbgLog.push(new Date().toLocaleTimeString() + " " + msg);
+        if (__dbgLog.length > 40) __dbgLog.shift();
+        const el = document.getElementById("dbgOverlay");
+        if (el && el.style.display !== "none") __renderDbg();
+      } catch (_) {}
+    }
+    function __renderDbg() {
+      const el = document.getElementById("dbgOverlay");
+      if (!el) return;
+      const g = window.__backGuard || {};
+      let h = "v" + APP_VERSION + " | history.length=" + history.length +
+        " | guardArmed=" + guardArmed + " exitOpen=" + exitOpen + " exiting=" + exiting + " expectPop=" + expectPop +
+        "\n__backGuard: armed=" + g.armed + " ready=" + g.ready + " lenBefore=" + g.lenBefore + " lenAfter=" + g.lenAfter + " pushErr=" + (g.pushErr || "-") +
+        "\n--- log ---\n" + ((window.__dbgEarly || []).concat(__dbgLog)).join("\n");
+      el.textContent = h;
+    }
+    (function () {
+      let taps = 0, last = 0;
+      const brand = document.querySelector(".brand");
+      if (!brand) return;
+      brand.addEventListener("click", () => {
+        const now = Date.now();
+        taps = (now - last < 600) ? taps + 1 : 1;
+        last = now;
+        if (taps >= 3) {
+          taps = 0;
+          const el = document.getElementById("dbgOverlay");
+          el.style.display = (el.style.display === "none") ? "block" : "none";
+          __renderDbg();
+        }
+      });
+    })();
     // 뒤로가기로 앱이 바로 꺼지지 않게: 종료 확인창(예/아니오)
     // G: 가드 항목, E: 확인창용 항목. E는 항상 한 칸씩만 pop해서 out-of-range 무시를 피한다.
     let exitOpen = false;    // 확인창이 열려 있음 (E가 스택에 있음)
@@ -755,8 +798,9 @@
     }
     armBackGuard();
     function handleBackPop() {
+      __dbg("popstate 진입 len=" + history.length);
       disarmGuard();
-      if (exiting) { exiting = false; try { history.back(); } catch (_) {} return; }
+      if (exiting) { __dbg("popstate: exiting 체인 계속 len=" + history.length); exitStep(); return; }
       if (expectPop) { expectPop = false; armBackGuard(); return; }
       const otherDialog = document.querySelector("dialog[open]:not(#exitDialog)");
       if (otherDialog) { otherDialog.close(); armBackGuard(); return; }
@@ -770,12 +814,24 @@
       openExitDialog();
     }
     if (window.__backGuard) { window.__backGuard.ready = true; window.__backGuard.onPop = handleBackPop; }
+    __dbg("main 초기화: guardArmed=" + guardArmed + " len=" + history.length);
+    let exitTries = 0;
+    function exitStep() {
+      // "예" 종료 체인: E→G→A를 한 칸씩 팝. popstate가 안 오면 타임아웃이 보정한다.
+      if (!exiting) return;
+      if (exitTries++ > 8) { exiting = false; __dbg("예: 체인 포기"); return; }
+      __dbg("예: back() 호출 tries=" + exitTries + " len=" + history.length);
+      try { history.back(); } catch (_) {}
+      setTimeout(() => { if (exiting) exitStep(); }, 350);
+    }
     bindTap($("#exitYesBtn"), () => {
       if (!exitOpen || exiting) return;
       exiting = true;
       exitOpen = false;
+      exitTries = 0;
       $("#exitDialog").close();
-      try { history.back(); } catch (_) { exiting = false; }  // E 팝 → popstate에서 한 칸 더 → 앱 종료
+      __dbg("예 탭: 체인 시작 len=" + history.length);
+      exitStep();
     });
     bindTap($("#exitNoBtn"), dismissExitDialog);
     $("#exitDialog").addEventListener("click", event => { if (event.target === $("#exitDialog")) dismissExitDialog(); });
