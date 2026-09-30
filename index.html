@@ -315,7 +315,7 @@
         <div class="mark">A</div>
         <div>
           <h1>TEF Atelier</h1>
-          <div class="subtitle">답을 떠올린 뒤 공개하고, 2초 안에 안 나오면 X</div>
+          <div class="subtitle">답을 떠올린 뒤 공개하고, 2초 안에 안 나오면 X <span id="appVer" style="font-size:10px;opacity:.45"></span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -723,6 +723,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
+    const APP_VERSION = "7";  // 배포할 때마다 version.txt와 함께 올리기
     // 뒤로가기로 앱이 바로 꺼지지 않게: 종료 확인창(예/아니오)
     // G: 가드 항목, E: 확인창용 항목. E는 항상 한 칸씩만 pop해서 out-of-range 무시를 피한다.
     let exitOpen = false;    // 확인창이 열려 있음 (E가 스택에 있음)
@@ -731,9 +732,9 @@
     let guardArmed = !!((window.__backGuard || {}).armed);  // head 가드가 이미 걸었으면 true
     function armBackGuard() {
       if (guardArmed || exitOpen || exiting || document.querySelector("dialog[open]")) return;
+      try { history.pushState({ backGuard: true }, ""); } catch (_) { return; }
       guardArmed = true;
       if (window.__backGuard) window.__backGuard.armed = true;
-      try { history.pushState({ backGuard: true }, ""); } catch (_) {}
     }
     function disarmGuard() {
       guardArmed = false;
@@ -787,6 +788,24 @@
     // 백그라운드에서 돌아왔을 때 가드가 풀려 있으면 다시 걸기
     document.addEventListener("visibilitychange", () => { if (!document.hidden) armBackGuard(); });
     window.addEventListener("pageshow", () => armBackGuard());
+    // 버전 확인: Pages가 HTML을 10분간 캐시해서 구버전이 뜰 수 있다.
+    // version.txt(항상 새로 받아옴)와 다르면 새 버전을 받아오도록 새로고침한다.
+    (function () {
+      const verEl = $("#appVer");
+      if (verEl) verEl.textContent = "v" + APP_VERSION;
+      try {
+        fetch("version.txt?t=" + Date.now(), { cache: "no-store" })
+          .then(r => r.ok ? r.text() : "")
+          .then(t => {
+            t = (t || "").trim();
+            if (t && t !== APP_VERSION) {
+              showToast("새 버전을 받아오는 중…");
+              setTimeout(() => location.reload(), 700);
+            }
+          })
+          .catch(() => {});
+      } catch (_) {}
+    })();
 
     function bindTap(target, handler) {
       target.addEventListener("click", handler);
