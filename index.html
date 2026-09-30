@@ -314,8 +314,8 @@
       <div class="brand">
         <div class="mark">A</div>
         <div>
-          <h1>TEF Atelier</h1>
-          <div class="subtitle">답을 떠올린 뒤 공개하고, 2초 안에 안 나오면 X <span id="appVer" style="font-size:10px;opacity:.45"></span></div>
+          <h1>TEF Atelier <span id="appVer" style="font-size:10px;opacity:.45;font-weight:400;vertical-align:middle"></span></h1>
+          <div class="subtitle">답을 떠올린 뒤 공개하고, 2초 안에 안 나오면 X</div>
         </div>
       </div>
       <div class="header-actions">
@@ -723,7 +723,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "7";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "8";  // 배포할 때마다 version.txt와 함께 올리기
     // 뒤로가기로 앱이 바로 꺼지지 않게: 종료 확인창(예/아니오)
     // G: 가드 항목, E: 확인창용 항목. E는 항상 한 칸씩만 pop해서 out-of-range 무시를 피한다.
     let exitOpen = false;    // 확인창이 열려 있음 (E가 스택에 있음)
