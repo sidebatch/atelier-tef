@@ -1,6 +1,18 @@
 <!doctype html>
 <html lang="ko">
 <head>
+  <script>
+  /* 앱 로드 전 뒤로가기 가드: 무거운 본문 스크립트가 실행되기 전에 히스토리 가드를 먼저 겁니다.
+     본문 스크립트가 준비되면 ready/onPop을 통해 실제 종료 확인창 로직으로 넘깁니다. */
+  window.__backGuard = { armed: false, ready: false, onPop: null };
+  try { history.pushState({ backGuard: true }, ""); window.__backGuard.armed = true; } catch (_) {}
+  window.addEventListener("popstate", function () {
+    var g = window.__backGuard;
+    g.armed = false;
+    if (g.ready && g.onPop) { g.onPop(); return; }
+    try { history.pushState({ backGuard: true }, ""); g.armed = true; } catch (_) {}
+  });
+  </script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f6f3ec">
@@ -716,11 +728,16 @@
     let exitOpen = false;    // 확인창이 열려 있음 (E가 스택에 있음)
     let exiting = false;     // "예"를 눌러 종료 진행 중
     let expectPop = false;   // 우리가 의도적으로 E를 팝하는 중
-    let guardArmed = false;  // G가 스택 최상단에 있음
+    let guardArmed = !!((window.__backGuard || {}).armed);  // head 가드가 이미 걸었으면 true
     function armBackGuard() {
       if (guardArmed || exitOpen || exiting || document.querySelector("dialog[open]")) return;
       guardArmed = true;
+      if (window.__backGuard) window.__backGuard.armed = true;
       try { history.pushState({ backGuard: true }, ""); } catch (_) {}
+    }
+    function disarmGuard() {
+      guardArmed = false;
+      if (window.__backGuard) window.__backGuard.armed = false;
     }
     function openExitDialog() {
       $("#exitDialog").showModal();
@@ -736,8 +753,8 @@
       try { history.back(); } catch (_) { expectPop = false; armBackGuard(); }
     }
     armBackGuard();
-    window.addEventListener("popstate", () => {
-      guardArmed = false;
+    function handleBackPop() {
+      disarmGuard();
       if (exiting) { exiting = false; try { history.back(); } catch (_) {} return; }
       if (expectPop) { expectPop = false; armBackGuard(); return; }
       const otherDialog = document.querySelector("dialog[open]:not(#exitDialog)");
@@ -750,7 +767,8 @@
         return;
       }
       openExitDialog();
-    });
+    }
+    if (window.__backGuard) { window.__backGuard.ready = true; window.__backGuard.onPop = handleBackPop; }
     bindTap($("#exitYesBtn"), () => {
       if (!exitOpen || exiting) return;
       exiting = true;
