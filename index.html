@@ -14,6 +14,8 @@
   window.addEventListener("popstate", function () {
     var g = window.__backGuard;
     g.armed = false;
+    // 버전업 reload 대기 중이면: 가드가 팝된 상태이므로 현재 항목을 reload → 팬텀 항목 없이 깨끗해짐
+    if (g.reloadAfterPop) { g.reloadAfterPop = false; try { location.reload(); } catch (_) {} return; }
     (window.__dbgEarly = window.__dbgEarly || []).push("head: popstate len=" + history.length);
     if (g.ready && g.onPop) { g.onPop(); return; }
     try { history.pushState({ backGuard: true }, ""); g.armed = true; } catch (_) {}
@@ -730,7 +732,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "9";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "10";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -856,7 +858,16 @@
             t = (t || "").trim();
             if (t && t !== APP_VERSION) {
               showToast("새 버전을 받아오는 중…");
-              setTimeout(() => location.reload(), 700);
+              // reload가 현재 항목(가드)을 덮어써서 팬텀 항목이 남는다.
+              // 가드를 먼저 팝하고 reload하면 히스토리가 깨끗해진다.
+              var g = window.__backGuard;
+              if (g && g.armed) {
+                g.reloadAfterPop = true;
+                setTimeout(() => { try { history.back(); } catch (_) { location.reload(); } }, 300);
+                setTimeout(() => { if (g.reloadAfterPop) { g.reloadAfterPop = false; location.reload(); } }, 1500);
+              } else {
+                setTimeout(() => location.reload(), 700);
+              }
             }
           })
           .catch(() => {});
