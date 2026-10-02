@@ -177,6 +177,7 @@
     .source { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
     .pronounce-btn {
       min-height: 50px;
+      min-width: 200px;
       margin-top: 20px;
       padding: 0 22px;
       display: inline-flex;
@@ -238,7 +239,7 @@
 
     .actions { margin-top: 12px; }
     .reveal-btn { width: 100%; min-height: 56px; background: var(--ink); color: white; border-color: var(--ink); font-weight: 820; font-size: 16px; }
-    .inline-reveal-btn { width: fit-content; min-height: 50px; margin: 10px auto 0; padding: 0 28px; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+    .inline-reveal-btn { width: fit-content; min-width: 200px; min-height: 50px; margin: 10px auto 0; padding: 0 22px; font-size: 15px; border-radius: 15px; display: flex; align-items: center; justify-content: center; }
     .revealed .inline-reveal-btn { display: none; }
     .grade-row { display: none; grid-template-columns: 1fr 1fr; gap: 10px; }
     .revealed-actions .reveal-btn { display: none; }
@@ -758,7 +759,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "15";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "16";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
