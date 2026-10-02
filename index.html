@@ -305,6 +305,8 @@
     @media (max-width: 680px) {
       .app { padding-left: 14px; padding-right: 14px; gap: 12px; }
       .subtitle { display: none; }
+      header { flex-wrap: wrap; row-gap: 10px; }
+      .header-actions { flex: 1 1 100%; flex-wrap: wrap; }
       .header-actions .reset-label { display: none; }
       .stats { grid-template-columns: 1.5fr repeat(3, 1fr); }
       .stat { padding: 9px 8px; }
@@ -759,7 +761,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "20";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "21";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
