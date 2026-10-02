@@ -732,7 +732,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "11";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "12";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -829,8 +829,8 @@
       exitOpen = false;
       __dbg("예 탭: 종료 시도 len=" + history.length);
       try { $("#exitDialog").close(); } catch (_) {}
-      // 히스토리를 [N]까지 정리 (E, G 팝)
-      try { history.go(-(history.length - 1)); } catch (_) {}
+      // 히스토리를 [N]까지 정리 (E, G 팝). length가 1이면 go(0)=새로고침이 되므로 스킵
+      try { if (history.length > 1) history.go(-(history.length - 1)); } catch (_) {}
       // 앱 닫기 시도 (PWA에서만 동작할 수 있음)
       setTimeout(() => { try { window.close(); } catch (_) {} }, 120);
       // 폴백: 여전히 살아있으면 시스템 백키로 마무리 안내
