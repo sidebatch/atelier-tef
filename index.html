@@ -238,6 +238,8 @@
 
     .actions { margin-top: 12px; }
     .reveal-btn { width: 100%; min-height: 56px; background: var(--ink); color: white; border-color: var(--ink); font-weight: 820; font-size: 16px; }
+    .inline-reveal-btn { width: fit-content; min-height: 50px; margin: 10px auto 0; padding: 0 28px; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+    .revealed .inline-reveal-btn { display: none; }
     .grade-row { display: none; grid-template-columns: 1fr 1fr; gap: 10px; }
     .revealed-actions .reveal-btn { display: none; }
     .revealed-actions .grade-row { display: grid; }
@@ -756,7 +758,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "14";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "15";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -960,7 +962,7 @@
           <article class="card${revealed ? " revealed" : ""}" id="flashcard" tabindex="0" role="button" aria-label="${revealed ? "정답이 공개됨" : "정답 공개"}">
             <div class="card-top">
               <span class="source">${lexLabel(card.lexique)} · ${card.number}</span>
-              <span class="streak" aria-label="연속 정답 ${p.streak}회">${[0,1,2].map(i => `<span class="dot${i < p.streak ? " on" : ""}"></span>`).join("")}</span>
+              <span class="streak" aria-label="연속 정답 ${p.streak}회">${[0,1,2].map(i => { const c = i < p.streak ? " on" : (i === p.streak && p.streak > 0 ? " next" : ""); return `<span class="dot${c}"></span>`; }).join("")}</span>
             </div>
             <div class="prompt-wrap">
               <div>
@@ -968,6 +970,7 @@
                 <div class="prompt${reverse ? " korean" : ""}">${escapeHtml(prompt)}</div>
                 ${reverse && missingKorean ? '<div class="hint-missing">PDF에 한국어 뜻이 없어 영어 원문을 제시함</div>' : ""}
                 ${!reverse ? '<button class="pronounce-btn" id="pronounceBtn" type="button" aria-label="프랑스어 발음 듣기">🔊 발음 듣기</button>' : ""}
+                ${!reverse ? '<button class="reveal-btn inline-reveal-btn" id="revealBtnTop" type="button">뜻 보기</button>' : ""}
               </div>
             </div>
             <div class="answer" aria-hidden="${!revealed}">
@@ -1049,6 +1052,8 @@
         if ((event.key === "Enter" || event.key === " ") && !revealed) { event.preventDefault(); reveal(); }
       });
       bindTap($("#revealBtn"), event => { event.stopPropagation(); reveal(); });
+      const revealTop = $("#revealBtnTop");
+      if (revealTop) bindTap(revealTop, event => { event.stopPropagation(); reveal(); });
       bindTap($("#wrongBtn"), event => { event.stopPropagation(); grade(false); });
       bindTap($("#rightBtn"), event => { event.stopPropagation(); grade(true); });
       bindTap($("#pronounceBtn"), event => {
