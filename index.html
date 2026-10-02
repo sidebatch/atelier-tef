@@ -329,6 +329,7 @@
       <div class="header-actions">
         <a class="icon-btn" href="ce.html" style="text-decoration:none; display:inline-flex; align-items:center;">📖 리딩</a>
         <button class="icon-btn" id="hardBtn" type="button">어려운 카드 <strong id="hardBadge">0</strong></button>
+        <button class="icon-btn" id="syncBtn" type="button">동기화</button>
         <button class="icon-btn" id="resetBtn" type="button" aria-label="전체 초기화">↺ <span class="reset-label">초기화</span></button>
       </div>
     </header>
@@ -371,6 +372,21 @@
     <div class="modal-body" id="hardList"></div>
     <div class="modal-foot">
       <button class="icon-btn" id="studyHardBtn" type="button">오답만 학습</button>
+    </div>
+  </dialog>
+  <dialog id="syncDialog" aria-label="학습 기록 동기화">
+    <div class="modal-head">
+      <div><h2>동기화</h2><p>PC와 폰 사이에서 학습 기록을 옮깁니다.</p></div>
+      <button class="icon-btn" id="closeSyncBtn" type="button">닫기</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin:0 0 12px">가져오면 <strong>두 기기의 기록이 합쳐집니다</strong> (덮어쓰지 않아요). 순서 상관없어요.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="icon-btn" id="exportBtn" type="button">📤 내보내기</button>
+        <button class="icon-btn" id="importBtn" type="button">📥 가져오기</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <p style="margin:12px 0 0;color:var(--muted);font-size:13px">PC → 폰: PC에서 내보내기 → 파일을 카톡 '나에게 보내기'로 전송 → 폰에 저장 → 폰 앱에서 가져오기</p>
     </div>
   </dialog>
   <dialog id="exitDialog" aria-label="앱 종료 확인">
@@ -732,7 +748,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "12";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "13";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -1252,13 +1268,71 @@
     bindTap($("#closeHardBtn"), () => $("#hardDialog").close());
     $("#hardDialog").addEventListener("click", event => { if (event.target === $("#hardDialog")) $("#hardDialog").close(); });
     bindTap($("#studyHardBtn"), () => { $("#hardDialog").close(); state.mode = "hard"; revealed = false; save(); render(); });
+    // 학습 기록 동기화: 내보내기/가져오기 (두 기기 기록은 합쳐짐)
+    bindTap($("#syncBtn"), () => $("#syncDialog").showModal());
+    bindTap($("#closeSyncBtn"), () => $("#syncDialog").close());
+    $("#syncDialog").addEventListener("click", event => { if (event.target === $("#syncDialog")) $("#syncDialog").close(); });
+    bindTap($("#exportBtn"), () => {
+      try {
+        const payload = JSON.stringify({ format: "tef-atelier-progress", version: 1, exportedAt: new Date().toISOString(), state });
+        const blob = new Blob([payload], { type: "application/json" });
+        const a = document.createElement("a");
+        const d = new Date(), p = n => String(n).padStart(2, "0");
+        a.href = URL.createObjectURL(blob);
+        a.download = "tef-atelier-progress-" + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes()) + ".json";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        showToast("진행 파일을 저장했어요");
+      } catch (_) { showToast("내보내기에 실패했어요"); }
+    });
+    bindTap($("#importBtn"), () => $("#importFile").click());
+    $("#importFile").addEventListener("change", event => {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = "";
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          const incoming = (parsed && parsed.state) || parsed;
+          if (!incoming || typeof incoming.progress !== "object") throw new Error("bad file");
+          const DIRS = ["fr-ko", "ko-fr", "type"];
+          for (const id of Object.keys(incoming.progress)) {
+            const src = incoming.progress[id];
+            if (!src || typeof src !== "object") continue;
+            const dst = state.progress[id] || (state.progress[id] = {});
+            for (const dir of DIRS) {
+              const s = src[dir];
+              if (!s || typeof s !== "object") continue;
+              const t = dst[dir] || (dst[dir] = { streak: 0, o: 0, x: 0 });
+              t.streak = Math.max(t.streak || 0, s.streak || 0);
+              t.o = (t.o || 0) + (s.o || 0);
+              t.x = (t.x || 0) + (s.x || 0);
+            }
+          }
+          const inDaily = incoming.dailyByDeck || {};
+          for (const k of Object.keys(inDaily)) {
+            const d = dailyOf(k);
+            const s = inDaily[k] || {};
+            d.wrongIds = Array.from(new Set([...(d.wrongIds || []), ...((s.wrongIds) || [])]));
+            d.completedIds = Array.from(new Set([...(d.completedIds || []), ...((s.completedIds) || [])]));
+            d.x = d.wrongIds.length; d.o = d.completedIds.length;
+          }
+          save(); render();
+          $("#syncDialog").close();
+          showToast("가져오기 완료! 기록이 합쳐졌어요");
+        } catch (_) { showToast("파일을 읽지 못했어요. 진행 파일이 맞는지 확인해 주세요."); }
+      };
+      reader.onerror = () => showToast("파일을 읽지 못했어요.");
+      reader.readAsText(file);
+    });
     if ("speechSynthesis" in window) {
       window.speechSynthesis.getVoices();
       window.speechSynthesis.addEventListener?.("voiceschanged", () => window.speechSynthesis.getVoices());
     }
     window.addEventListener("keydown", event => {
       if (event.target && /^(INPUT|TEXTAREA)$/.test(event.target.tagName)) return;
-      if ($("#hardDialog").open) return;
+      if ($("#hardDialog").open || $("#syncDialog").open) return;
       if (event.code === "Space" && !revealed) { event.preventDefault(); reveal(); }
       else if (revealed && (event.key === "ArrowLeft" || event.key.toLowerCase() === "x")) { event.preventDefault(); grade(false); }
       else if (revealed && (event.key === "ArrowRight" || event.key.toLowerCase() === "o")) { event.preventDefault(); grade(true); }
