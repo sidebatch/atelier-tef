@@ -168,7 +168,7 @@
       flex-direction: column;
       position: relative;
       overflow: hidden;
-      cursor: pointer;
+      cursor: default;
       user-select: none;
       touch-action: manipulation;
     }
@@ -759,7 +759,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "19";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "20";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -960,7 +960,7 @@
       return `
         <div class="study">
           <div class="queue-note"><span>${state.mode === "session" ? `세션 ${state.session} · ${scopeDone}/${scoped.length} 완료` : state.mode === "hard" ? `오답 ${scoped.length}개 집중` : "전체 범위"}</span><span>대기 ${queueLength}장</span></div>
-          <article class="card${revealed ? " revealed" : ""}" id="flashcard" tabindex="0" role="button" aria-label="${revealed ? "정답이 공개됨" : "정답 공개"}">
+          <article class="card${revealed ? " revealed" : ""}" id="flashcard" tabindex="0" aria-label="단어 카드">
             <div class="card-top">
               <span class="source">${lexLabel(card.lexique)} · ${card.number}</span>
               <span class="streak" aria-label="연속 정답 ${p.streak}회">${[0,1,2].map(i => { const c = i < p.streak ? " on" : (i === p.streak && p.streak > 0 ? " next" : ""); return `<span class="dot${c}"></span>`; }).join("")}</span>
@@ -1048,7 +1048,6 @@
         return;
       }
       main.innerHTML = cardMarkup(card, queue.length);
-      bindTap($("#flashcard"), reveal);
       $("#flashcard").addEventListener("keydown", event => {
         if ((event.key === "Enter" || event.key === " ") && !revealed) { event.preventDefault(); reveal(); }
       });
