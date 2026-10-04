@@ -193,6 +193,15 @@ const DECKS = [
   { id:"b2",   label:"B2",       test:c=>c.l===8 },
   { id:"expr", label:"관용 표현", test:c=>c.l===7 },
 ];
+/* B1·B2 품사별: id에서 번호 추출 (L6-001 → 1) */
+const b6num = c => parseInt(c.i.split("-")[1], 10);
+const B1B2_PARTS = [
+  { id:"b1b2-verb", label:"B1·B2 동사",   test:c=>c.l===6 && (b6num(c)<=399 || b6num(c)>=1399) },
+  { id:"b1b2-adj",  label:"B1·B2 형용사", test:c=>c.l===6 && b6num(c)>=400 && b6num(c)<=547 },
+  { id:"b1b2-conn", label:"B1·B2 연결어", test:c=>c.l===6 && b6num(c)>=548 && b6num(c)<=581 },
+  { id:"b1b2-noun", label:"B1·B2 명사",   test:c=>c.l===6 && b6num(c)>=582 && b6num(c)<=1398 },
+];
+B1B2_PARTS.forEach(d=>DECKS.splice(4,0,d)); /* B1·B2 바로 뒤에 삽입 */
 const COUNTS = [10,20,30,50];
 const TIMES  = [{v:10,label:"10초"},{v:15,label:"15초"},{v:20,label:"20초"},{v:0,label:"무제한"}];
 const DIRS   = [{v:"fr-ko",label:"불어 → 한국어"},{v:"ko-fr",label:"한국어 → 불어"}];
