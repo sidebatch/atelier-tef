@@ -207,6 +207,12 @@ const $ = id => document.getElementById(id);
 const BEST_KEY = "tef-exam-best-v1";
 const getBest = () => { try{ return JSON.parse(localStorage.getItem(BEST_KEY)||"{}"); }catch(e){ return {}; } };
 const setBest = o => { try{ localStorage.setItem(BEST_KEY, JSON.stringify(o)); }catch(e){} };
+/* 출제 이력: 전체 정복 모드용. 카드 id 집합을 통째로 저장 (덱 무관, 최대 4007개·수십KB) */
+const TESTED_KEY = "tef-exam-tested-v1";
+const getTested = () => { try{ return JSON.parse(localStorage.getItem(TESTED_KEY)||"{}"); }catch(e){ return {}; } };
+const saveTested = o => { try{ localStorage.setItem(TESTED_KEY, JSON.stringify(o)); }catch(e){} };
+let TESTED = getTested();
+function markTested(id){ if(!TESTED[id]){ TESTED[id]=1; saveTested(TESTED); } }
 
 /* ============ 효과음 (WebAudio 합성, 파일 없음) ============ */
 let AC=null;
@@ -240,9 +246,16 @@ function chipGroup(el, items, cur, fmt, onPick){
 function deckCount(id){ const d=DECKS.find(x=>x.id===id); return CARDS.filter(d.test).length; }
 function refreshBest(){
   const best=getBest()[S.deck+"_"+S.dir];
-  $("bestLine").innerHTML = best!=null
-    ? `이 조건 최고 기록 <b>${best}점</b>`
-    : "아직 이 조건으로 본 시험이 없어요";
+  const deck=DECKS.find(d=>d.id===S.deck);
+  const pool=CARDS.filter(deck.test);
+  const done=pool.filter(c=>TESTED[c.i]).length;
+  const cov = done>=pool.length
+    ? `🏆 <b>이 덱 정복 완료!</b>`
+    : `출제 이력 ${done.toLocaleString()} / ${pool.length.toLocaleString()}장 · 안 푼 카드부터 출제돼요`;
+  $("bestLine").innerHTML = (best!=null?`최고 <b>${best}점</b> · `:"")
+    + cov + ` · <a href="#" id="resetTested" style="color:var(--muted)">기록 지우기</a>`;
+  $("resetTested").onclick=e=>{ e.preventDefault();
+    if(confirm("출제 기록을 모두 지울까요?")){ TESTED={}; saveTested(TESTED); refreshBest(); } };
 }
 function initSetup(){
   chipGroup($("deckChips"), DECKS, S.deck, d=>`${d.label}<small>${deckCount(d.id).toLocaleString()}</small>`, v=>S.deck=v);
@@ -256,7 +269,10 @@ function initSetup(){
 /* ============ 시험 ============ */
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function buildQuestions(pool, n){
-  const picked = shuffle(pool.slice()).slice(0, Math.min(n, pool.length));
+  /* 안 푼 카드 우선 → 다 풀었으면 푼 카드에서 셔플 */
+  const untested = shuffle(pool.filter(c=>!TESTED[c.i]));
+  const testedAgain = shuffle(pool.filter(c=>TESTED[c.i]));
+  const picked = untested.concat(testedAgain).slice(0, Math.min(n, pool.length));
   return picked.map(card=>{
     const key = S.dir==="fr-ko" ? "k" : "f";
     const seen = new Set([card[key]]);
@@ -275,6 +291,7 @@ function startExam(customPool){
   const deck=DECKS.find(d=>d.id===S.deck);
   const pool=(customPool||CARDS.filter(deck.test));
   if(pool.length<4){ alert("이 덱의 문제 수가 부족해요."); return; }
+  TESTED=getTested(); /* 다른 탭에서 쌓인 기록 반영 */
   S.qs=buildQuestions(pool,S.count); S.idx=0; S.correct=0; S.wrong=[]; S.times=[];
   show("quiz"); renderQ();
 }
@@ -336,6 +353,7 @@ function answer(ok, btn, q){
   if(S.locked) return; S.locked=true; stopTimer();
   const dt=(performance.now()-S.t0)/1000;
   S.times.push(S.time?Math.min(dt,S.time):dt);
+  markTested(q.card.i);
   markChoices(q);
   const msg=$("flashMsg");
   if(ok){ S.correct++; sfxOK(); msg.textContent="정답!"; msg.classList.add("ok"); $("qScore").textContent=S.correct; }
@@ -346,6 +364,7 @@ function timeoutQ(){
   if(S.locked) return; S.locked=true;
   const q=S.qs[S.idx];
   S.times.push(S.time); S.wrong.push(q.card);
+  markTested(q.card.i);
   markChoices(q);
   const msg=$("flashMsg");
   msg.textContent="시간 초과! 정답을 확인하세요"; msg.classList.add("no");
