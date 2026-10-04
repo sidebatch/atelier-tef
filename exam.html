@@ -421,6 +421,20 @@ function finishExam(){
   show("result");
 }
 
+/* 주제 지도 등 외부에서 ?topic=..&from=..&to=.. 로 범위 지정 시 커스텀 덱으로 */
+(function(){
+  try{
+    const q=new URLSearchParams(location.search);
+    const from=parseInt(q.get("from"),10), to=parseInt(q.get("to"),10);
+    if(from>=1 && to>=from){
+      const label=q.get("topic") || ("L6-"+from+"~"+to);
+      DECKS.unshift({ id:"custom", label:label,
+        test:c=>c.l===6 && b6num(c)>=from && b6num(c)<=to });
+      S.deck="custom";
+    }
+  }catch(e){}
+})();
+
 document.addEventListener("DOMContentLoaded", initSetup);
 </script>
 </body>
