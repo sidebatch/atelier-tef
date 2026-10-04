@@ -289,7 +289,8 @@ function buildQuestions(pool, n){
 }
 function startExam(customPool){
   const deck=DECKS.find(d=>d.id===S.deck);
-  const pool=(customPool||CARDS.filter(deck.test));
+  /* 버튼 클릭 시 브라우저가 이벤트 객체를 첫 인자로 넘기므로 배열인지 반드시 확인 */
+  const pool=(Array.isArray(customPool)?customPool:CARDS.filter(deck.test));
   if(pool.length<4){ alert("이 덱의 문제 수가 부족해요."); return; }
   TESTED=getTested(); /* 다른 탭에서 쌓인 기록 반영 */
   S.qs=buildQuestions(pool,S.count); S.idx=0; S.correct=0; S.wrong=[]; S.times=[];
