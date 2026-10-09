@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """quiz81.html 생성기: Quiz 'Les verbes (1-1500)' PDF 81개 항목만 따로 공부하는 페이지.
 index.html의 CARDS에서 해당 카드만 읽어 내장한다. 기존 앱 파일은 수정하지 않는다.
+방식 2가지: ✍️ 타이핑(뜻 보고 프랑스어 직접 쓰기, 자동 채점 — 기본) / 🃏 카드(뜻 보고 O·X).
 진도는 별도 키 tef-quiz81-v1 에 저장한다 (기존 단어장·사이클 진도와 무접촉).
 bénéficier는 PDF에서 (à)/(de) 두 항목이라 항목은 81개, 카드는 80장이다."""
 import re, json, pathlib
@@ -541,6 +542,7 @@ template = r"""<!DOCTYPE html>
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 13px;font-size:14px}
   .chip.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+  .chip small{opacity:.75;font-size:12px}
   label.flabel{display:block;font-size:13px;color:var(--muted);margin:16px 0 8px}
   .big-btn{width:100%;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:700;background:var(--green);color:#fff;margin-top:20px}
   .ghost-btn{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px;font-size:15px;background:#fff;margin-top:10px}
@@ -577,6 +579,17 @@ template = r"""<!DOCTYPE html>
   .qlist{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
   .qlist td,.qlist th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
   .qlist th{color:var(--muted);font-weight:600}
+  .prompt-ko{font-size:clamp(24px,6vw,34px);font-weight:800;line-height:1.35;margin:16px 0 4px;text-align:center}
+  .prompt-en{text-align:center;color:var(--muted);font-size:15px;margin-top:4px}
+  #type-input{font:inherit;width:100%;padding:15px;border:2px solid var(--line);border-radius:14px;background:#fff;margin-top:18px;text-align:center;font-size:19px}
+  #type-input:focus{outline:none;border-color:var(--green)}
+  .type-result{border-radius:14px;padding:16px;margin-top:16px;text-align:center}
+  .type-result.correct{background:var(--green-soft)}
+  .type-result.wrong{background:var(--red-soft)}
+  .type-msg{font-size:19px;font-weight:800}
+  .type-flag{font-size:13px;font-weight:700;color:#8a6d1a;background:#f7ecc9;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:middle}
+  .type-given{color:var(--muted);font-size:14px;margin-top:6px}
+  .type-answer{font-size:17px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -593,11 +606,13 @@ template = r"""<!DOCTYPE html>
     <div id="resume-box"></div>
     <div class="card">
       <div style="font-weight:800;font-size:17px">퀴즈 81개만 공부하기</div>
-      <div class="note" style="margin-top:8px">PDF 순서 그대로입니다. 22~81번은 앱의 B1·B2 동사 덱, 1~21번은 명사·형용사·연결어·관용 표현·A2·B1에 흩어져 있던 것까지 전부 모아놨습니다. bénéficier는 (à)/(de) 두 항목이라 항목 81개 · 카드 80장입니다.</div>
+      <div class="note" style="margin-top:8px">실제 퀴즈처럼 뜻을 보고 프랑스어를 직접 타이핑하는 게 기본입니다. PDF 순서 그대로이고, 22~81번은 앱의 B1·B2 동사 덱, 1~21번은 명사·형용사·연결어·관용 표현·A2·B1에 흩어져 있던 것까지 전부 모아놨습니다. bénéficier는 (à)/(de) 두 항목이라 항목 81개 · 카드 80장입니다.</div>
+      <label class="flabel">방식</label>
+      <div class="chips" id="mode-chips"></div>
       <label class="flabel">블록 크기 (한 번에 돌릴 개수)</label>
       <div class="chips" id="size-chips"></div>
       <button class="big-btn" id="start-btn">시작하기</button>
-      <div class="note" style="margin-top:12px">흐름은 사이클 학습과 같습니다: 블록 1회차 → 같은 블록 섞어서 2회차 → 2회차에서 틀린 것만 → 다음 블록. 3블록마다 틀린 단어를 섞어서 누적 복습하고, 마지막에는 끝까지 남은 것만 한 번 더 봅니다. 진도는 이 기기에 따로 저장돼서 기존 단어장·사이클 진도와 섞이지 않습니다.</div>
+      <div class="note" style="margin-top:12px">흐름은 사이클 학습과 같습니다: 블록 1회차 → 같은 블록 섞어서 2회차 → 2회차에서 틀린 것만 → 다음 블록. 3블록마다 틀린 단어를 섞어서 누적 복습하고, 마지막에는 끝까지 남은 것만 한 번 더 봅니다. 타이핑 채점은 기존 단어장과 같은 기준입니다 — 악센트만 틀리거나 관사·재귀대명사·끝 전치사가 빠진 경우는 맞힌 것으로 보되 "정확한 형태 확인" 표시를 띄워줍니다. 단, bénéficier (à)/(de)는 그 전치사가 정답의 핵심이라 꼭 써야 합니다. 진도는 이 기기에 따로 저장돼서 기존 단어장·사이클 진도와 섞이지 않습니다.</div>
       <details class="listbox">
         <summary>81개 목록 먼저 보기</summary>
         <table class="qlist"><thead><tr><th>#</th><th>퀴즈 표기</th><th>앱 카드</th><th>뜻</th></tr></thead><tbody id="list-body"></tbody></table>
@@ -625,20 +640,36 @@ template = r"""<!DOCTYPE html>
         <span class="word-id" id="card-id"></span>
         <span class="word-id" id="card-count"></span>
       </div>
-      <div class="fr-row">
-        <div class="fr" id="card-fr"></div>
-        <button class="audio-btn" id="audio-btn" title="발음 듣기">🔊</button>
+
+      <!-- 카드 방식 -->
+      <div id="prompt-card">
+        <div class="fr-row">
+          <div class="fr" id="card-fr"></div>
+          <button class="audio-btn" id="audio-btn" title="발음 듣기">🔊</button>
+        </div>
+        <div class="quiz-note" id="card-note"></div>
+        <div id="answer-box" class="hidden">
+          <div class="ko" id="card-ko"></div>
+          <div class="en" id="card-en"></div>
+          <div class="quiz-answer" id="card-quiz-answer"></div>
+        </div>
+        <button class="reveal-btn" id="reveal-btn">뜻 보기 (먼저 머릿속으로 떠올려보세요)</button>
+        <div class="row hidden" id="grade-row">
+          <button class="btn-wrong" id="wrong-btn">✕ 틀렸어요</button>
+          <button class="btn-right" id="right-btn">○ 맞혔어요</button>
+        </div>
       </div>
-      <div class="quiz-note" id="card-note"></div>
-      <div id="answer-box" class="hidden">
-        <div class="ko" id="card-ko"></div>
-        <div class="en" id="card-en"></div>
-        <div class="quiz-answer" id="card-quiz-answer"></div>
-      </div>
-      <button class="reveal-btn" id="reveal-btn">뜻 보기 (먼저 머릿속으로 떠올려보세요)</button>
-      <div class="row hidden" id="grade-row">
-        <button class="btn-wrong" id="wrong-btn">✕ 틀렸어요</button>
-        <button class="btn-right" id="right-btn">○ 맞혔어요</button>
+
+      <!-- 타이핑 방식 -->
+      <div id="prompt-type" class="hidden">
+        <div class="prompt-ko" id="type-ko"></div>
+        <div class="prompt-en" id="type-en"></div>
+        <input id="type-input" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="프랑스어로 입력">
+        <div class="row" id="type-btn-row">
+          <button class="btn-wrong" id="giveup-btn">모름</button>
+          <button class="btn-right" id="check-btn">확인</button>
+        </div>
+        <div id="type-result"></div>
       </div>
     </div>
     <button class="ghost-btn" id="study-setup">잠깐 멈추기 (진도 저장됨)</button>
@@ -673,25 +704,77 @@ const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.
 function lexShort(c){ return (c.lexique===0?"A0":c.lexique===7?"E7":"L"+c.lexique)+"-"+String(c.number).padStart(3,"0"); }
 function chunks(size){ const out=[]; for(let i=0;i<ALL.length;i+=size) out.push(ALL.slice(i,i+size)); return out; }
 function phaseLabel(p){ return {r1:"1회차", r2:"2회차 · 섞어서", r3:"틀린 것만", cum:"누적 복습", final:"마지막 복습"}[p] || p; }
+function modeLabel(m){ return m==="type" ? "✍️ 타이핑" : "🃏 카드"; }
+function promptKo(e){ if(e.pko) return e.pko; const c=BY_ID[e.pid]; return c? (c.ko||c.en||"") : ""; }
+
+/* ===== 프랑스어 타이핑 채점 (기존 단어장과 같은 기준) ===== */
+function normFr(s){ return String(s).toLowerCase().replace(/[’‘]/g,"'").replace(/[.!?]+$/g,"").trim().replace(/\s+/g," "); }
+function cleanInput(s){ return normFr(s).replace(/\s*\([^)]*\)/g," ").trim().replace(/\s+/g," "); }
+function stripAccents(s){ return s.replace(/œ/g,"oe").replace(/æ/g,"ae").normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+function coreForm(a){
+  let s = String(a);
+  s = s.replace(/\s*\+\s*[\w/]+$/, "");
+  s = s.replace(/^l'/, "");
+  s = s.replace(/^(le|la|les|un|une|des)\s+/, "");
+  s = s.replace(/^s'/, "").replace(/^se\s+/, "");
+  s = s.replace(/\s+(de|d'|à|au|aux|en|pour|contre|avec|sur|dans|par|sans|chez)$/, "");
+  return s.trim().replace(/\s+/g," ");
+}
+function acceptableAnswers(fr){
+  const out = [];
+  String(fr).split("/").forEach(v => {
+    const base = v.replace(/\s*\([^)]*\)/g,"").replace(/\s{2,}/g," ").trim();
+    if(base) out.push(base);
+    const kept = v.replace(/\s*\(([^)]*)\)/g, (m,g) => /^(de|à|au|aux|en|par|pour|avec|sur|dans|chez|contre|d')$/i.test(g.trim()) ? " "+g.trim() : "").replace(/\s{2,}/g," ").trim();
+    if(kept && kept !== base) out.push(kept);
+  });
+  return out;
+}
+function normKeepParens(s){ return normFr(s).replace(/[()]/g," ").trim().replace(/\s+/g," "); }
+/* 채점 결과: correct | accent | partial | wrong  (accent·partial도 맞힌 것으로 침, 표시만 다름) */
+function gradeEntry(e, raw, gaveUp){
+  if(gaveUp) return "wrong";
+  if(!String(raw||"").trim()) return "wrong";
+  if(e.strict){
+    const n = normKeepParens(raw);
+    const target = normKeepParens(e.pfr);
+    if(n === target) return "correct";
+    if(stripAccents(n) === stripAccents(target)) return "accent";
+    return "wrong";
+  }
+  const card = BY_ID[e.pid];
+  const answers = [...new Set([...acceptableAnswers(e.pfr), ...(card? acceptableAnswers(card.fr):[])])];
+  const n = cleanInput(raw);
+  const parts = n.split("/").map(x=>x.trim()).filter(Boolean);
+  const hit = x => answers.some(a => normFr(a) === x || stripAccents(normFr(a)) === stripAccents(x));
+  if(parts.length > 1 && parts.every(hit)) return "correct";
+  if(answers.some(a => normFr(a) === n)) return "correct";
+  if(answers.some(a => stripAccents(normFr(a)) === stripAccents(n))) return "accent";
+  if(answers.some(a => { const full = normFr(a), core = coreForm(full); return core && core !== full && stripAccents(core) === stripAccents(n); })) return "partial";
+  return "wrong";
+}
+window.__quizGrade = (n, raw) => gradeEntry(BY_N[n], raw, false);
 
 let S = null;
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 function load(){ try{ const o=JSON.parse(localStorage.getItem(KEY)||"null"); return (o && o.v===1 && Array.isArray(o.queue)) ? o : null; }catch(e){ return null; } }
 
-let selSize = 20;
+let selSize = 20, selMode = "type";
 function renderSetup(){
   const saved = load();
   const rb = $("resume-box");
   if(saved && saved.view!=="done"){
     const tb = chunks(saved.size).length;
     rb.innerHTML = '<div class="resume"><b>이어서 할 퀴즈 학습이 있어요</b><div style="margin-top:6px;font-size:14px">'
-      + '블록 ' + Math.min(saved.blockIdx+1,tb) + '/' + tb + ' · ' + phaseLabel(saved.stage)
+      + modeLabel(saved.mode||"card") + ' · 블록 ' + Math.min(saved.blockIdx+1,tb) + '/' + tb + ' · ' + phaseLabel(saved.stage)
       + ' · 지금까지 ' + saved.stats.answered + '번 인출</div>'
       + '<button class="big-btn" id="resume-btn" style="margin-top:12px">이어서 계속하기</button>'
       + '<button class="ghost-btn danger" id="discard-btn">이 학습 버리기</button></div>';
-    $("resume-btn").onclick = ()=>{ S=saved; selSize=saved.size; if(S.view==="intro"){ renderIntro(); show("intro"); } else if(S.view==="done"){ renderDone(); show("done"); } else { show("study"); renderCard(); } };
+    $("resume-btn").onclick = ()=>{ S=saved; S.mode=S.mode||"card"; selSize=saved.size; selMode=S.mode; if(S.view==="intro"){ renderIntro(); show("intro"); } else if(S.view==="done"){ renderDone(); show("done"); } else { show("study"); renderCard(); } };
     $("discard-btn").onclick = ()=>{ if(confirm("진행 중인 퀴즈 학습을 버릴까요? (기존 단어장 진도는 그대로입니다)")){ localStorage.removeItem(KEY); renderSetup(); } };
   } else rb.innerHTML = "";
+  $("mode-chips").innerHTML = [["type","✍️ 타이핑 <small>뜻 보고 프랑스어 직접 쓰기</small>"],["card","🃏 카드 <small>프랑스어 보고 뜻 떠올리기</small>"]].map(([id,label])=>'<button class="chip'+(id===selMode?" on":"")+'" data-mode="'+id+'">'+label+'</button>').join("");
+  document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ selMode=b.dataset.mode; renderSetup(); });
   $("size-chips").innerHTML = [10,20,27].map(n=>'<button class="chip'+(n===selSize?" on":"")+'" data-size="'+n+'">'+n+'개씩</button>').join("");
   document.querySelectorAll("[data-size]").forEach(b=>b.onclick=()=>{ selSize=+b.dataset.size; renderSetup(); });
   $("list-body").innerHTML = ENTRIES.map(e=>{ const c=BY_ID[e.pid]; return '<tr><td>'+e.n+'</td><td>'+e.pfr+'</td><td>'+lexShort(c)+'</td><td>'+(c?c.ko:"")+'</td></tr>'; }).join("");
@@ -702,13 +785,15 @@ function enterBlock(note){
   const bs = chunks(S.size);
   S.block = bs[S.blockIdx].slice();
   S.stage="r1"; S.queue=S.block.slice(); S.idx=0; S.wrongR1=0; S.wrongR2=[];
-  setIntro("퀴즈 81 · 블록 "+(S.blockIdx+1)+"/"+bs.length,
+  setIntro("퀴즈 81 · "+modeLabel(S.mode)+" · 블록 "+(S.blockIdx+1)+"/"+bs.length,
     "블록 "+(S.blockIdx+1)+" / "+bs.length+" — "+S.block.length+"개",
-    (note? note+" ":"")+"먼저 순서대로 한 번 봅니다. 바로 안 떠오르면 틀린 걸로 넘기세요. 같은 블록을 섞어서 한 번 더 하고, 그때도 틀린 것만 마지막으로 봅니다.",
+    (note? note+" ":"")+(S.mode==="type"
+      ? "뜻을 보고 프랑스어를 직접 써보세요. 바로 안 떠오르면 모름으로 넘기세요. 같은 블록을 섞어서 한 번 더 하고, 그때도 틀린 것만 마지막으로 봅니다."
+      : "먼저 순서대로 한 번 봅니다. 바로 안 떠오르면 틀린 걸로 넘기세요. 같은 블록을 섞어서 한 번 더 하고, 그때도 틀린 것만 마지막으로 봅니다."),
     "1회차 시작");
 }
 function startStudy(){
-  S = { v:1, size:selSize, blockIdx:0, stage:"r1", view:"intro", queue:[], idx:0, block:[],
+  S = { v:1, size:selSize, mode:selMode, blockIdx:0, stage:"r1", view:"intro", queue:[], idx:0, block:[],
         wrongR1:0, wrongR2:[], cumPending:[], stubborn:[], blocksSinceCum:0,
         stats:{answered:0, correct:0}, intro:null };
   enterBlock("");
@@ -760,6 +845,20 @@ function afterTransition(){
   if(S.view==="done"){ renderDone(); show("done"); }
   else { renderIntro(); show("intro"); }
 }
+function recordGrade(ok){
+  const e=currentEntry(); if(!e) return;
+  const uid=e.n;
+  S.stats.answered++; if(ok) S.stats.correct++;
+  if(S.stage==="r1" && !ok) S.wrongR1++;
+  if(S.stage==="r2" && !ok){ S.wrongR2.push(uid); if(!S.cumPending.includes(uid)) S.cumPending.push(uid); }
+  if((S.stage==="r3" || S.stage==="cum") && !ok){ if(!S.stubborn.includes(uid)) S.stubborn.push(uid); }
+}
+function progressNext(){
+  S._pending=null;
+  S.idx++;
+  if(S.idx < S.queue.length){ save(); renderCard(); }
+  else { endStage(); afterTransition(); }
+}
 function renderIntro(){
   $("intro-kicker").textContent = S.intro? S.intro.kicker : "";
   $("intro-title").textContent = S.intro? S.intro.title : "";
@@ -781,13 +880,31 @@ function renderCard(){
   $("bar-fill").style.width = Math.round(S.idx/S.queue.length*100)+"%";
   $("card-id").textContent = "퀴즈 " + e.n + "번 · " + lexShort(c);
   $("card-count").textContent = (S.idx+1)+" / "+S.queue.length;
-  $("card-fr").textContent = c.fr;
-  const sameForm = e.pfr.replace(/’/g,"'").toLowerCase() === c.fr.replace(/’/g,"'").toLowerCase();
-  $("card-note").textContent = sameForm ? "" : ("퀴즈 표기: " + e.pfr);
-  $("answer-box").classList.add("hidden");
-  $("grade-row").classList.add("hidden");
-  $("reveal-btn").classList.remove("hidden");
-  window._revealed=false;
+  const isType = S.mode==="type";
+  $("prompt-card").classList.toggle("hidden", isType);
+  $("prompt-type").classList.toggle("hidden", !isType);
+  window._revealed=false; window._typeChecked=false;
+  if(isType){
+    $("type-ko").textContent = promptKo(e);
+    $("type-en").textContent = "영어: " + e.pen;
+    $("type-input").value = "";
+    $("type-result").innerHTML = "";
+    $("type-btn-row").classList.remove("hidden");
+    if(S._pending && S._pending.n===e.n){
+      window._typeChecked = true;
+      $("type-input").value = S._pending.raw || "";
+      renderTypeResult(e, S._pending.result, S._pending.raw || "");
+    } else {
+      setTimeout(()=>{ try{ $("type-input").focus({preventScroll:true}); }catch(err){} }, 30);
+    }
+  } else {
+    $("card-fr").textContent = c.fr;
+    const sameForm = e.pfr.replace(/’/g,"'").toLowerCase() === c.fr.replace(/’/g,"'").toLowerCase();
+    $("card-note").textContent = sameForm ? "" : ("퀴즈 표기: " + e.pfr);
+    $("answer-box").classList.add("hidden");
+    $("grade-row").classList.add("hidden");
+    $("reveal-btn").classList.remove("hidden");
+  }
 }
 $("reveal-btn").onclick = ()=>{
   const e=currentEntry(); if(!e) return;
@@ -801,20 +918,57 @@ $("reveal-btn").onclick = ()=>{
   window._revealed=true;
 };
 function answer(ok){
-  const e=currentEntry(); if(!e || !window._revealed) return;
-  const uid=e.n;
-  S.stats.answered++; if(ok) S.stats.correct++;
-  if(S.stage==="r1" && !ok) S.wrongR1++;
-  if(S.stage==="r2" && !ok){ S.wrongR2.push(uid); if(!S.cumPending.includes(uid)) S.cumPending.push(uid); }
-  if((S.stage==="r3" || S.stage==="cum") && !ok){ if(!S.stubborn.includes(uid)) S.stubborn.push(uid); }
-  S.idx++;
-  if(S.idx < S.queue.length){ save(); renderCard(); }
-  else { endStage(); afterTransition(); }
+  if(!currentEntry() || !window._revealed) return;
+  recordGrade(ok);
+  progressNext();
 }
 $("wrong-btn").onclick = ()=>answer(false);
 $("right-btn").onclick = ()=>answer(true);
+
+/* ===== 타이핑 방식 ===== */
+function checkTyped(gaveUp){
+  const e=currentEntry(); if(!e || window._typeChecked) return;
+  const raw = $("type-input").value;
+  if(!gaveUp && !raw.trim()){ $("type-input").focus(); return; }
+  const result = gradeEntry(e, raw, gaveUp);
+  const ok = result !== "wrong";
+  window._typeChecked = true;
+  recordGrade(ok);
+  S._pending = { n:e.n, result:result, raw:raw };
+  save();
+  renderTypeResult(e, result, raw);
+}
+function renderTypeResult(e, result, raw){
+  const ok = result !== "wrong";
+  const c = BY_ID[e.pid];
+  const flag = result==="accent" ? '<span class="type-flag">악센트 확인</span>'
+    : result==="partial" ? '<span class="type-flag">정확한 형태 확인</span>' : "";
+  const sameForm = e.pfr.replace(/’/g,"'").toLowerCase() === c.fr.replace(/’/g,"'").toLowerCase();
+  $("type-result").innerHTML =
+    '<div class="type-result '+(ok?"correct":"wrong")+'">'
+    + '<div class="type-msg">'+(ok? "⭕ 맞았어요!" : "❌ 틀렸어요")+flag+'</div>'
+    + (ok? "" : '<div class="type-given">입력: '+(raw.trim()? raw.replace(/</g,"&lt;") : "(비어 있음)")+'</div>')
+    + '<div class="type-answer">정답: <b>'+e.pfr.replace(/</g,"&lt;")+'</b>'+(sameForm? "" : ' <span style="color:var(--muted);font-size:14px">(앱 표기: '+c.fr.replace(/</g,"&lt;")+')</span>')+'</div>'
+    + '<div class="type-given">'+promptKo(e)+' · '+e.pen+'</div>'
+    + '<div class="row" style="margin-top:12px"><button id="type-audio-btn" style="flex:1;border-radius:12px;padding:12px;border:1px solid var(--line);background:#fff;font-weight:700">🔊 발음 듣기</button>'
+    + '<button id="type-next-btn" style="flex:1;border-radius:12px;padding:12px;border:none;background:var(--green);color:#fff;font-weight:700">다음 →</button></div>'
+    + '</div>';
+  $("type-btn-row").classList.add("hidden");
+  $("type-audio-btn").onclick = ()=>playAudio(c);
+  $("type-next-btn").onclick = ()=>{ progressNext(); };
+  setTimeout(()=>{ try{ $("type-next-btn").focus({preventScroll:true}); }catch(err){} }, 30);
+}
+$("check-btn").onclick = ()=>checkTyped(false);
+$("giveup-btn").onclick = ()=>checkTyped(true);
+$("type-input").addEventListener("keydown", ev=>{
+  if(ev.key==="Enter"){ ev.preventDefault(); if(!window._typeChecked) checkTyped(false); }
+});
 document.addEventListener("keydown", e=>{
   if($("view-study").classList.contains("hidden")) return;
+  if(S && S.mode==="type"){
+    if(window._typeChecked && e.code==="Enter"){ e.preventDefault(); const b=$("type-next-btn"); if(b) b.click(); }
+    return;
+  }
   if(!window._revealed && (e.code==="Space"||e.code==="Enter")){ e.preventDefault(); $("reveal-btn").click(); }
   else if(window._revealed && e.key==="ArrowLeft") answer(false);
   else if(window._revealed && e.key==="ArrowRight") answer(true);
@@ -822,22 +976,22 @@ document.addEventListener("keydown", e=>{
 
 /* 발음: 내장 MP3 우선, 없으면 기기 프랑스어 음성 */
 function cleanFr(t){ return (t||"").replace(/\s*\([fm]\.\)/gi,"").replace(/\s*\/\s*/g," ").replace(/\s{2,}/g," ").trim(); }
-$("audio-btn").onclick = ()=>{
-  const e=currentEntry(); if(!e) return;
-  const c=BY_ID[e.pid];
+function playAudio(c){
+  if(!c) return;
   const text=cleanFr(c.fr);
   const a=new Audio("audio/"+encodeURIComponent(c.id)+".mp3");
   let fell=false;
   const fallback=()=>{ if(fell) return; fell=true; try{ const u=new SpeechSynthesisUtterance(text); u.lang="fr-FR"; u.rate=.92; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(err){} };
   a.addEventListener("error", fallback, {once:true});
   const p=a.play(); if(p&&p.catch) p.catch(fallback);
-};
+}
+$("audio-btn").onclick = ()=>{ const e=currentEntry(); if(e) playAudio(BY_ID[e.pid]); };
 
 function renderDone(){
   $("done-answered").textContent = S.stats.answered;
   $("done-rate").textContent = S.stats.answered? Math.round(S.stats.correct/S.stats.answered*100)+"%":"-";
   $("done-stubborn").textContent = S.stubborn.length;
-  $("done-body").textContent = "퀴즈 81개를 끝까지 돌렸습니다.";
+  $("done-body").textContent = "퀴즈 81개를 "+modeLabel(S.mode)+" 방식으로 끝까지 돌렸습니다.";
   $("done-stubborn-list").innerHTML = S.stubborn.length
     ? "끝까지 틀린 단어: " + S.stubborn.map(n=>{ const e=BY_N[n]; const c=BY_ID[e.pid]; return n+"번 "+c.fr+" = "+c.ko; }).join(" · ")
     : "끝까지 남은 틀린 단어가 없습니다.";
@@ -855,7 +1009,9 @@ renderSetup();
 </html>
 """
 
-entries_js = [{"n": n, "pid": pid, "pfr": pfr, "pen": pen} for n, pid, pfr, pen in ENTRIES]
+PROMPT_KO = {28: "-에 도움이 되다 (남에게)", 29: "-에 득을 보다 (본인이)"}
+STRICT = {28, 29}  # bénéficier (à)/(de): 전치사가 정답의 핵심이라 괄호를 벗겨내지 않고 채점
+entries_js = [{"n": n, "pid": pid, "pfr": pfr, "pen": pen, "pko": PROMPT_KO.get(n, ""), "strict": n in STRICT} for n, pid, pfr, pen in ENTRIES]
 out = template.replace("__CARDS_JSON__", json.dumps(cards, ensure_ascii=False))
 out = out.replace("__ENTRIES_JS__", json.dumps(entries_js, ensure_ascii=False))
 (root / "quiz81.html").write_text(out, encoding="utf-8")

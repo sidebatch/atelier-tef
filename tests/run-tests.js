@@ -173,6 +173,7 @@ function loadPage(file) {
     await sleep(300);
     dom.window.localStorage.setItem("tef-5hour-vocab-v1", '{"SENTINEL":1}');
     dom.window.localStorage.setItem("tef-cycle-v1", '{"SENTINEL":2}');
+    [...d.querySelectorAll("[data-mode]")].find(c => c.dataset.mode === "card")?.click();
     [...d.querySelectorAll("[data-size]")].find(c => c.dataset.size === "27")?.click();
     d.getElementById("start-btn").click();
     await sleep(50);
@@ -197,6 +198,47 @@ function loadPage(file) {
     ok(dom.window.localStorage.getItem("tef-cycle-v1") === '{"SENTINEL":2}',
        "퀴즈81이 사이클 진도를 건드리지 않음");
     ok(errors.length === 0, "퀴즈81 흐름 중 오류 없음", errors[0] || "");
+    dom.window.close();
+  }
+
+  console.log("\n[흐름: 퀴즈81 타이핑 + 채점 규칙]");
+  {
+    const { dom, errors } = loadPage("quiz81.html");
+    const d = dom.window.document;
+    await sleep(300);
+    const g = dom.window.__quizGrade;
+    ok(typeof g === "function", "퀴즈81 채점 함수 있음");
+    ok(g(1, "supplémentaire") === "correct" && g(1, "supplementaire") === "accent" && g(1, "zzz") === "wrong",
+       "채점: 정확·악센트만 틀림·오답 구분");
+    ok(g(28, "bénéficier") === "wrong" && g(28, "bénéficier à") === "correct" && g(28, "bénéficier de") === "wrong"
+       && g(29, "bénéficier de") === "correct",
+       "채점: bénéficier (à)/(de)는 전치사가 필수");
+    ok(g(17, "oeuvre") === "accent" && g(17, "l'œuvre") === "correct",
+       "채점: œuvre의 oe 표기 허용, 관사 붙여 써도 정답");
+    ok(g(27, "s'apercevoir de") === "correct" && g(50, "habituer / s'habituer") === "correct",
+       "채점: 괄호 전치사를 붙여 쓰거나 슬래시 형태도 정답");
+    [...d.querySelectorAll("[data-size]")].find(c => c.dataset.size === "27")?.click();
+    d.getElementById("start-btn").click();
+    await sleep(50);
+    const vis = id => !d.getElementById(id).classList.contains("hidden");
+    let steps = 0;
+    while (!vis("view-done") && steps < 5000) {
+      steps++;
+      if (vis("view-intro")) { d.getElementById("intro-btn").click(); await sleep(1); continue; }
+      if (vis("view-study")) {
+        const n = +d.getElementById("card-id").textContent.match(/퀴즈 (\d+)번/)[1];
+        d.getElementById("type-input").value = quizEntries.find(e => e.n === n).pfr;
+        d.getElementById("check-btn").click();
+        await sleep(1);
+        d.getElementById("type-next-btn").click();
+        await sleep(1); continue;
+      }
+      await sleep(3);
+    }
+    ok(vis("view-done"), `퀴즈81 타이핑 모드 끝까지 완주 (steps=${steps})`);
+    ok(d.getElementById("done-answered").textContent === "162" && d.getElementById("done-rate").textContent === "100%",
+       `전부 맞히면 인출 162회·정답률 100% (실제 ${d.getElementById("done-answered").textContent} / ${d.getElementById("done-rate").textContent})`);
+    ok(errors.length === 0, "퀴즈81 타이핑 흐름 중 오류 없음", errors[0] || "");
     dom.window.close();
   }
 
