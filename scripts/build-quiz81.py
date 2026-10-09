@@ -954,7 +954,7 @@ function renderTypeResult(e, result, raw){
     + '<button id="type-next-btn" style="flex:1;border-radius:12px;padding:12px;border:none;background:var(--green);color:#fff;font-weight:700">다음 →</button></div>'
     + '</div>';
   $("type-btn-row").classList.add("hidden");
-  $("type-audio-btn").onclick = ()=>playAudio(c);
+  $("type-audio-btn").onclick = ()=>playAudio(e);
   $("type-next-btn").onclick = ()=>{ progressNext(); };
   setTimeout(()=>{ try{ $("type-next-btn").focus({preventScroll:true}); }catch(err){} }, 30);
 }
@@ -975,17 +975,52 @@ document.addEventListener("keydown", e=>{
 });
 
 /* 발음: 내장 MP3 우선, 없으면 기기 프랑스어 음성 */
-function cleanFr(t){ return (t||"").replace(/\s*\([fm]\.\)/gi,"").replace(/\s*\/\s*/g," ").replace(/\s{2,}/g," ").trim(); }
-function playAudio(c){
-  if(!c) return;
-  const text=cleanFr(c.fr);
+function cleanSegForSpeech(s) {
+  s = String(s || "");
+  s = s.replace(/\s+\+\s*\S+/g, "");            // " + inf", " + infinitif", " + qn/qc"
+  s = s.replace(/\+[^\s]+/g, "");               // attached: "de+qc" -> "de", "que+ind" -> "que"
+  s = s.replace(/\s*\+\s*$/, "").replace(/(^|\s)\+(\s|$)/g, "$1"); // leftover lone "+"
+  s = s.replace(/\b(?:qc|qn)\s*\/\s*(?:inf|ind|sub|cond|qc|qn)\b/gi, ""); // "qc/inf"
+  s = s.replace(/\s*\/\s*(?:inf|ind|sub|cond|qc|qn)\s*$/i, "");           // trailing "/ ind"
+  return s.replace(/\s{2,}/g, " ").trim();
+}
+const NOTATION_ONLY = new Set(["inf", "ind", "sub", "cond", "qc", "qn", "infinitif", "indicatif", "subjonctif", "conditionnel"]);
+const FRAGMENT_ONLY = new Set(["que", "qu'", "de", "à", "au", "aux", "en"]);
+function cleanFrenchForSpeech(text) {
+  let t = String(text || "");
+  t = t.replace(/\s*\([fm]\.\)/gi, "");                       // (f.) (m.)
+  // embedded parens (letters follow): "(re)copier" -> "recopier"
+  t = t.replace(/([a-zà-ÿ]*)\(([^)]*)\)([a-zà-ÿ]+)/gi, (m, pre, g, post) => {
+    const c = cleanSegForSpeech(g);
+    return NOTATION_ONLY.has(c.toLowerCase()) ? pre + post : pre + c + post;
+  });
+  // spaced parens: "(de)" -> " de", "(que + qc / ind)" -> " que", "(ou maladroit)" -> " ou maladroit"
+  t = t.replace(/\(([^)]*)\)/g, (m, g, offset, str) => {
+    const c = cleanSegForSpeech(g);
+    if (!c) return " ";
+    const prev = str[offset - 1] || "";
+    const next = str[offset + m.length] || "";
+    if (/[a-zà-ÿ]/i.test(prev) && !/[a-zà-ÿ]/i.test(next)) return "";  // suffix parens: "assuré(e)" -> "assuré", "(ve)"/"(le)"/"(euse)"도 기본형만
+    return " " + c + " ";
+  });
+  t = t.replace(/\b(?:qc|qn)\s*\/\s*(?:inf|ind|sub|cond|qc|qn)\b/gi, ""); // "qc/inf" 같은 쌍 표기 통째로 제거
+  const segs = t.split("/").map(cleanSegForSpeech).filter(Boolean);
+  const parts = segs.filter(x => !NOTATION_ONLY.has(x.toLowerCase()) && !FRAGMENT_ONLY.has(x.toLowerCase()));
+  return (parts.length ? parts : segs).join(", ").replace(/\bqn\b/gi, "quelqu'un").replace(/\bqc\b/gi, "quelque chose");
+}
+function speechTextForEntry(e){ return cleanFrenchForSpeech(e.pfr); }
+window.__quizSpeechText = n => speechTextForEntry(BY_N[n]);
+function playAudio(e){
+  if(!e) return;
+  const c = BY_ID[e.pid]; if(!c) return;
+  const text = speechTextForEntry(e) || cleanFrenchForSpeech(c.fr);
   const a=new Audio("audio/"+encodeURIComponent(c.id)+".mp3");
   let fell=false;
   const fallback=()=>{ if(fell) return; fell=true; try{ const u=new SpeechSynthesisUtterance(text); u.lang="fr-FR"; u.rate=.92; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(err){} };
   a.addEventListener("error", fallback, {once:true});
   const p=a.play(); if(p&&p.catch) p.catch(fallback);
 }
-$("audio-btn").onclick = ()=>{ const e=currentEntry(); if(e) playAudio(BY_ID[e.pid]); };
+$("audio-btn").onclick = ()=>{ const e=currentEntry(); if(e) playAudio(e); };
 
 function renderDone(){
   $("done-answered").textContent = S.stats.answered;

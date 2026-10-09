@@ -242,6 +242,40 @@ function loadPage(file) {
     dom.window.close();
   }
 
+  console.log("\n[발음 표기 정리]");
+  {
+    const { dom } = loadPage("index.html");
+    await sleep(350);
+    const f = dom.window.cleanFrenchForSpeech;
+    ok(typeof f === "function", "index 발음 정리 함수 있음");
+    ok(f("du fait de+qc / que+ind") === "du fait de" && f("afin de+inf / que+sub") === "afin de",
+       "발음: +qc/+ind 표기와 남은 'que' 조각 제거");
+    ok(f("Être censé + infinitif") === "Être censé" && f("Rendre + qc + adj") === "Rendre",
+       "발음: + infinitif·+ adj 표기 제거 (단어 붙음 없음)");
+    ok(f("en plus de + qn/qc") === "en plus de" && f("Inciter qn à + inf") === "Inciter quelqu'un à",
+       "발음: qn/qc 약어를 읽지 않고 풀어 읽음");
+    ok(f("(re)copier") === "recopier" && f("assuré(e)") === "assuré" && f("à") === "à",
+       "발음: 괄호 표기 정리, 한 단어짜리 전치사는 유지");
+    dom.window.close();
+  }
+  {
+    const { dom } = loadPage("cycle.html");
+    await sleep(300);
+    ok(typeof dom.window.cleanFr === "function" && dom.window.cleanFr("du fait de+qc / que+ind") === "du fait de",
+       "사이클 발음도 표기를 읽지 않음");
+    dom.window.close();
+  }
+  {
+    const { dom } = loadPage("quiz81.html");
+    await sleep(300);
+    const s = dom.window.__quizSpeechText;
+    ok(typeof s === "function" && s(8) === "du fait de" && s(28) === "bénéficier à" && s(17) === "œuvre",
+       "퀴즈81 발음: 퀴즈 표기 기준, 표기·괄호 없이 발음");
+    ok(typeof s === "function" && s(50) === "habituer à, s'habituer à" && s(27) === "s'apercevoir de",
+       "퀴즈81 발음: 슬래시 형태와 (de)까지 자연스럽게");
+    dom.window.close();
+  }
+
   console.log("\n[흐름: 실전 exam]");
   {
     const { dom, errors } = loadPage("exam.html");
