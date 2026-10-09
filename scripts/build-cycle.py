@@ -53,17 +53,18 @@ template = r"""<!DOCTYPE html>
   .bar{height:8px;border-radius:99px;background:#e9e4d6;overflow:hidden;margin-top:10px}
   .bar>i{display:block;height:100%;background:var(--green);border-radius:99px;transition:width .25s}
   .word-id{font-size:12px;color:var(--muted);letter-spacing:.04em}
-  .fr{font-size:clamp(28px,7vw,40px);font-weight:800;line-height:1.25;margin:14px 0 6px;word-break:keep-all}
+  .fr{font-size:clamp(28px,7vw,40px);font-weight:800;line-height:1.25;margin:14px 0 6px;word-break:keep-all;text-align:center;padding:0 52px}
   .fr .sub{font-size:.55em;color:var(--muted);font-weight:600}
-  .ko{font-size:clamp(21px,5.5vw,28px);font-weight:700;line-height:1.4;margin-top:12px}
+  .ko{font-size:clamp(21px,5.5vw,28px);font-weight:700;line-height:1.4;margin-top:12px;text-align:center}
+  .en{text-align:center}
   .en{color:var(--muted);font-size:15px;margin-top:6px}
   .row{display:flex;gap:10px;margin-top:18px}
   .row>button{flex:1;border-radius:14px;padding:15px;font-size:16px;font-weight:700;border:1px solid var(--line);background:#fff}
   .btn-wrong{background:var(--red-soft)!important;border-color:#e3b7b1!important;color:var(--red)}
   .btn-right{background:var(--green-soft)!important;border-color:#a9d3ba!important;color:var(--green)}
   .reveal-btn{width:100%;border:1px dashed #b9b2a0;border-radius:14px;padding:16px;font-size:16px;background:rgba(255,253,248,.6);margin-top:16px}
-  .audio-btn{border:1px solid var(--line);background:#fff;border-radius:999px;width:44px;height:44px;font-size:19px;flex:0 0 auto}
-  .fr-row{display:flex;align-items:flex-start;gap:10px}
+  .audio-btn{position:absolute;right:0;top:10px;border:1px solid var(--line);background:#fff;border-radius:999px;width:44px;height:44px;font-size:19px}
+  .fr-row{position:relative}
   .intro-title{font-size:22px;font-weight:800;margin:4px 0 8px}
   .intro-body{color:var(--muted);line-height:1.6;font-size:15px}
   .hidden{display:none!important}
@@ -121,7 +122,7 @@ template = r"""<!DOCTYPE html>
         <span class="word-id" id="card-count"></span>
       </div>
       <div class="fr-row">
-        <div class="fr" id="card-fr" style="flex:1"></div>
+        <div class="fr" id="card-fr"></div>
         <button class="audio-btn" id="audio-btn" title="발음 듣기">🔊</button>
       </div>
       <div id="answer-box" class="hidden">
