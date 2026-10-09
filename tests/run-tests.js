@@ -77,7 +77,7 @@ for (const f of PAGES) {
 }
 
 /* ================= 페이지 로딩·흐름 검사 ================= */
-function loadPage(file) {
+function loadPage(file, seed) {
   const errors = [];
   const { VirtualConsole } = require("jsdom");
   const vc = new VirtualConsole();
@@ -88,6 +88,7 @@ function loadPage(file) {
       window.fetch = () => Promise.reject(new Error("offline in tests"));
       window.Audio = class { constructor() {} play() { return Promise.resolve(); } pause() {} addEventListener() {} };
       window.confirm = () => true;
+      if (seed) { try { window.localStorage.setItem("tef-5hour-vocab-v1", JSON.stringify(seed)); } catch (e) {} }
       window.scrollTo = () => {};
       if (!window.speechSynthesis) {
         window.speechSynthesis = { cancel() {}, speak() {}, getVoices: () => [] };
@@ -293,6 +294,81 @@ function loadPage(file) {
     dom.window.close();
   }
 
+
+  console.log("\n[흐름: 쓰기 게이트 (인식 졸업 → 쓰기 확인)]");
+  {
+    const connDeck = idxCards.filter(c => c.lexique === 6 && c.number >= 548 && c.number <= 581);
+    const pickTarget = used => connDeck.find(c => !used.includes(c.id) && !/[\/()]/.test(c.fr));
+    const todayStr = new Date().toLocaleDateString("en-CA");
+    const mkSeed = t => ({ deck: "b1b2-conn", direction: "fr-ko", mode: "all", session: 1, date: todayStr,
+      dailyByDeck: {}, progress: { [t.id]: { "fr-ko": { streak: 2, o: 2, x: 0 }, "ko-fr": { streak: 0, o: 0, x: 0 }, "type": { streak: 0, o: 0, x: 0 } } },
+      queues: { "b1b2-conn:fr-ko:all:-": [t.id] } });
+    const savedOf = dom => JSON.parse(dom.window.localStorage.getItem("tef-5hour-vocab-v1"));
+    // 현재 카드가 목표 카드인지: 인식 화면이면 .prompt가 fr, 쓰기 화면이면 .prompt가 ko.
+    // 다른 카드들은 O로 졸업시켜 큐가 돌게 하고(전부 X면 고정 간격 재삽입 탓에 뒤쪽 카드가 멈추는 기존 큐 특성),
+    // 쓰기 화면이 뜨면 제시어(ko)로 카드를 찾아 정답을 입력한다.
+    async function drive(dom, target, onGate, maxSteps) {
+      const d = dom.window.document;
+      let gateSeen = 0;
+      for (let i = 0; i < maxSteps; i++) {
+        const st = savedOf(dom);
+        if (st.progress[target.id]?.gate === "passed") return st;
+        const promptTxt = d.querySelector(".prompt")?.textContent || "";
+        const isTarget = promptTxt === target.fr || promptTxt === (target.ko || target.en);
+        const input = d.getElementById("typeInput");
+        if (input) { // 쓰기 화면 (게이트/코스)
+          let answer = "zzz";
+          if (isTarget) { gateSeen++; answer = onGate(gateSeen); }
+          else {
+            const c = connDeck.find(x => (x.ko || x.en) === promptTxt);
+            if (c) answer = c.fr.split("/")[0].trim();
+          }
+          input.value = answer;
+          d.getElementById("typeCheckBtn").click();
+          await sleep(50);
+          d.getElementById("typeNextBtn")?.click();
+          await sleep(50);
+          continue;
+        }
+        d.getElementById("revealBtn")?.click();
+        await sleep(25);
+        d.getElementById("rightBtn")?.click(); // 다른 카드도, 목표 카드(인식 단계)도 O
+        await sleep(25);
+      }
+      return savedOf(dom);
+    }
+    // A: 인식 3연속 → 게이트 pending (아직 완료 아님) → 쓰기 1회 정답 → 진짜 졸업
+    const tA = pickTarget([]);
+    {
+      const { dom, errors } = loadPage("index.html", mkSeed(tA));
+      const d = dom.window.document;
+      await sleep(400);
+      d.getElementById("revealBtn")?.click(); await sleep(40);
+      d.getElementById("rightBtn")?.click(); await sleep(80);
+      let st = savedOf(dom);
+      ok(st.progress[tA.id]?.gate === "pending", "인식 3연속 성공 → 바로 완료가 아니라 쓰기 게이트 pending");
+      ok(!(st.dailyByDeck?.["b1b2-conn"]?.completedIds || []).includes(tA.id), "게이트 전에는 오늘 완료에 안 잡힘");
+      st = await drive(dom, tA, () => tA.fr, 400);
+      ok(st.progress[tA.id]?.gate === "passed", "쓰기 1회 정답 → 게이트 통과");
+      ok((st.dailyByDeck?.["b1b2-conn"]?.completedIds || []).includes(tA.id), "게이트 통과 후에야 완료 처리");
+      ok(errors.length === 0, "게이트 통과 흐름 중 오류 없음", errors[0] || "");
+      dom.window.close();
+    }
+    // B: 게이트에서 쓰기 오답 → 쓰기 코스 → 연속 3회 쓰기 성공 → 졸업
+    const tB = pickTarget([tA.id]);
+    {
+      const { dom, errors } = loadPage("index.html", mkSeed(tB));
+      const d = dom.window.document;
+      await sleep(400);
+      d.getElementById("revealBtn")?.click(); await sleep(40);
+      d.getElementById("rightBtn")?.click(); await sleep(80);
+      const st = await drive(dom, tB, n => (n === 1 ? "zzz" : tB.fr), 600);
+      ok(st.progress[tB.id]?.gate === "passed", "게이트 오답 → 쓰기 코스 → 3연속 쓰기 성공으로 졸업");
+      ok(st.progress[tB.id]?.["type"]?.streak >= 3, "쓰기 코스 졸업 시 type streak 3");
+      ok(errors.length === 0, "쓰기 코스 흐름 중 오류 없음", errors[0] || "");
+      dom.window.close();
+    }
+  }
   console.log("\n[콘텐츠: topics·cognates]");
   {
     const { dom } = loadPage("topics.html");

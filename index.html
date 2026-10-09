@@ -498,7 +498,9 @@
           return core && core !== full && stripAccents(core) === stripAccents(n);
         })) result = "partial";
       }
-      applyGrade(result !== "wrong");
+      const gateNow = state.direction !== "type" ? gateOf(card.id) : undefined;
+      const effDir = (gateNow === "pending" || gateNow === "course") ? "type" : state.direction;
+      applyGrade(result !== "wrong", effDir);
       typeChecked = true;
       renderTypeResult(card, result, raw);
     }
@@ -523,8 +525,8 @@
       bindTap($("#typeNextBtn"), () => { render(); });
       bindTap($("#typePronounceBtn"), event => { event.stopPropagation(); pronounce(card.fr, card.id); });
     }
-    function typeMarkup(card, queueLength) {
-      const p = progressOf(card.id);
+    function typeMarkup(card, queueLength, gateMode) {
+      const p = progressOf(card.id, gateMode ? "type" : state.direction);
       const prompt = card.ko || card.en;
       const missingKorean = !card.ko;
       const scoped = scopeCards();
@@ -544,7 +546,7 @@
           </div>
           <div class="prompt-wrap">
             <div>
-              <div class="direction-label">한국어를 보고 프랑스어를 직접 써보세요</div>
+              <div class="direction-label">${gateMode === "pending" ? "🎓 졸업 관문 · 한국어를 보고 프랑스어를 직접 써보세요" : gateMode === "course" ? "✍️ 쓰기 코스 (연속 3회 성공하면 졸업) · 한국어를 보고 직접 써보세요" : "한국어를 보고 프랑스어를 직접 써보세요"}</div>
               <div class="prompt korean">${escapeHtml(prompt)}</div>
               ${missingKorean ? '<div class="hint-missing">PDF에 한국어 뜻이 없어 영어 원문을 제시함</div>' : ""}
             </div>
@@ -762,7 +764,12 @@
     }
 
     function progressOf(id, direction = state.direction) { return state.progress[id][direction]; }
-    function isMastered(id, direction = state.direction) { return progressOf(id, direction).streak >= MASTERY; }
+    function gateOf(id) { const e = state.progress[id]; return e ? e.gate : undefined; }
+    function isMastered(id, direction = state.direction) {
+      if (progressOf(id, direction).streak < MASTERY) return false;
+      const g = gateOf(id);
+      return g !== "pending" && g !== "course";
+    }
     function wrongTotal(id) { return DIRECTIONS.reduce((n, d) => n + progressOf(id, d).x, 0); }
 
     function scopeCards() {
@@ -800,7 +807,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "28";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "29";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -1027,7 +1034,7 @@
             <button class="reveal-btn" id="revealBtn" type="button">정답 보기</button>
             <div class="grade-row">
               <button class="grade wrong" id="wrongBtn" type="button">X<small>${state.mode === "hard" ? "3장 뒤 다시" : "10장 뒤 다시"}</small></button>
-              <button class="grade right" id="rightBtn" type="button">O<small>${p.streak === 2 ? "완료 처리" : "뒤로 보내기"}</small></button>
+              <button class="grade right" id="rightBtn" type="button">O<small>${p.streak === 2 ? (gateOf(card.id) === "passed" || progressOf(card.id, "type").streak >= MASTERY ? "완료 처리" : "쓰기 확인으로") : "뒤로 보내기"}</small></button>
             </div>
           </div>
           <p class="shortcut">Space: 정답 · ← X · → O</p>
@@ -1074,8 +1081,10 @@
       prefetchFrenchAudio(card.id);
       if (queue[1]) prefetchFrenchAudio(queue[1]);
       typeChecked = false;
-      if (state.direction === "type") {
-        main.innerHTML = typeMarkup(card, queue.length);
+      const gateHere = state.direction !== "type" ? gateOf(card.id) : undefined;
+      const gateMode = (gateHere === "pending" || gateHere === "course") ? gateHere : null;
+      if (state.direction === "type" || gateMode) {
+        main.innerHTML = typeMarkup(card, queue.length, gateMode);
         bindTap($("#typeCheckBtn"), () => checkTyped(false));
         bindTap($("#typeDontKnowBtn"), () => checkTyped(true));
         const input = $("#typeInput");
@@ -1243,29 +1252,50 @@ function cleanFrenchForSpeech(text) {
       else if (!onlinePromise) onlineFail();
     }
 
-    function applyGrade(correct) {
+    function completeCard(id, msg) {
+      const d = dailyOf();
+      if (!d.completedIds.includes(id)) d.completedIds.push(id);
+      d.o = d.completedIds.length;
+      showToast(msg || "완료! 연속 3회 정답");
+      masteryChime();
+    }
+    function applyGrade(correct, dirOverride) {
       const queue = getQueue();
       const id = queue.shift();
-      const p = progressOf(id);
+      const dir = dirOverride || state.direction;
+      const p = progressOf(id, dir);
+      const entry = state.progress[id];
+      const gateCtx = dir === "type" && (entry.gate === "pending" || entry.gate === "course");
       if (correct) {
         p.o += 1; p.streak += 1;
-        if (p.streak < MASTERY) {
+        if (gateCtx && entry.gate === "pending") {
+          entry.gate = "passed";
+          entry["type"].streak = MASTERY;
+          completeCard(id, "🎓 진짜 졸업! 쓰기까지 통과했어요");
+        } else if (p.streak < MASTERY) {
           const delay = p.streak === 1 ? 12 : 18;
           queue.splice(Math.min(delay, queue.length), 0, id);
+        } else if (dir !== "type" && entry.gate !== "passed" && entry["type"].streak < MASTERY) {
+          // 인식 졸업 → 쓰기 확인 관문. 쓰기를 통과해야 진짜 졸업.
+          entry.gate = "pending";
+          queue.splice(Math.min(8, queue.length), 0, id);
+          showToast("인식 졸업! 마지막 관문 — 쓰기로 한 번만 확인해요");
         } else {
-          const d = dailyOf();
-          if (!d.completedIds.includes(id)) d.completedIds.push(id);
-          d.o = d.completedIds.length;
-          showToast("완료! 연속 3회 정답");
-          masteryChime();
+          if (dir === "type") entry.gate = "passed";
+          completeCard(id);
         }
       } else {
         p.x += 1; p.streak = 0;
         const d = dailyOf();
         if (!d.wrongIds.includes(id)) d.wrongIds.push(id);
         d.x = d.wrongIds.length;
-        const delay = state.mode === "hard" ? 3 : 10;
-        queue.splice(Math.min(delay, queue.length), 0, id);
+        if (gateCtx) {
+          if (entry.gate === "pending") { entry.gate = "course"; showToast("쓰기 코스로 이동 — 연속 3회 쓰기 성공이 필요해요"); }
+          queue.splice(Math.min(state.mode === "hard" ? 3 : 5, queue.length), 0, id);
+        } else {
+          const delay = state.mode === "hard" ? 3 : 10;
+          queue.splice(Math.min(delay, queue.length), 0, id);
+        }
       }
       setQueue(queue);
       save();
