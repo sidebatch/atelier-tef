@@ -9,6 +9,8 @@ A2·B1 500개 어휘 + A1·A2 1,466개 어휘 + B1·B2 1,401개 어휘 + B2 336�
 
 **[CE 리딩 문제 풀기](https://sidebatch.github.io/atelier-tef/ce.html)**
 
+**[사이클 학습](https://sidebatch.github.io/atelier-tef/cycle.html)** — 블록(기본 20개) 단위 반복 학습: 1회차 → 같은 블록 섞어서 2회차 → 틀린 것만 → 다음 블록, 3블록마다 누적 복습. 진도는 기존 단어장과 분리 저장(`tef-cycle-v1`).
+
 ## 단어장 선택
 
 - A2·B1 단어 (500장): 원래 앱 그대로
