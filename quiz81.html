@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>퀴즈 동사 81 · TEF Atelier</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --paper:#f6f3ec; --surface:#fffdf8; --ink:#1f2925; --muted:#66706b; --line:#ddd8cc;
+    --green:#19724a; --green-soft:#e2f1e7; --red:#b9483d; --red-soft:#f7e5e2;
+    --shadow:0 18px 50px rgba(36,43,39,.10); color-scheme:light;
+  }
+  *{box-sizing:border-box} html{-webkit-tap-highlight-color:transparent}
+  body{margin:0;min-height:100dvh;background:radial-gradient(circle at 18% 0%,rgba(235,221,183,.42),transparent 30rem),var(--paper);
+    color:var(--ink);font-family:Inter,Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
+  button:active{transform:scale(.98)}
+  .app{width:min(720px,100%);margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,#2a3d34,#141c18);color:#ead9b8;font-family:Georgia,serif;font-size:22px;flex:0 0 auto}
+  h1{margin:0;font-size:20px;font-family:Georgia,serif}
+  .subtitle{color:var(--muted);font-size:12px;margin-top:2px}
+  .link-btn{border:1px solid var(--line);background:rgba(255,253,248,.82);border-radius:12px;padding:9px 11px;font-size:13px;text-decoration:none;color:var(--ink);white-space:nowrap}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:20px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 13px;font-size:14px}
+  .chip.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+  label.flabel{display:block;font-size:13px;color:var(--muted);margin:16px 0 8px}
+  .big-btn{width:100%;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:700;background:var(--green);color:#fff;margin-top:20px}
+  .ghost-btn{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px;font-size:15px;background:#fff;margin-top:10px}
+  .danger{color:var(--red)}
+  .resume{border:1px solid var(--green);background:var(--green-soft);border-radius:16px;padding:16px}
+  .resume b{font-size:16px}
+  .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .phase-badge{background:var(--ink);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
+  .bar{height:8px;border-radius:99px;background:#e9e4d6;overflow:hidden;margin-top:10px}
+  .bar>i{display:block;height:100%;background:var(--green);border-radius:99px;transition:width .25s}
+  .word-id{font-size:12px;color:var(--muted);letter-spacing:.04em}
+  .fr{font-size:clamp(28px,7vw,40px);font-weight:800;line-height:1.25;margin:14px 0 6px;word-break:keep-all;text-align:center;padding:0 52px}
+  .quiz-note{text-align:center;color:var(--muted);font-size:14px;margin-top:2px}
+  .ko{font-size:clamp(21px,5.5vw,28px);font-weight:700;line-height:1.4;margin-top:12px;text-align:center}
+  .en{text-align:center;color:var(--muted);font-size:15px;margin-top:6px}
+  .quiz-answer{text-align:center;color:var(--green);font-size:14px;margin-top:8px;font-weight:600}
+  .row{display:flex;gap:10px;margin-top:18px}
+  .row>button{flex:1;border-radius:14px;padding:15px;font-size:16px;font-weight:700;border:1px solid var(--line);background:#fff}
+  .btn-wrong{background:var(--red-soft)!important;border-color:#e3b7b1!important;color:var(--red)}
+  .btn-right{background:var(--green-soft)!important;border-color:#a9d3ba!important;color:var(--green)}
+  .reveal-btn{width:100%;border:1px dashed #b9b2a0;border-radius:14px;padding:16px;font-size:16px;background:rgba(255,253,248,.6);margin-top:16px}
+  .audio-btn{position:absolute;right:0;top:10px;border:1px solid var(--line);background:#fff;border-radius:999px;width:44px;height:44px;font-size:19px}
+  .fr-row{position:relative}
+  .intro-title{font-size:22px;font-weight:800;margin:4px 0 8px}
+  .intro-body{color:var(--muted);line-height:1.6;font-size:15px}
+  .hidden{display:none!important}
+  .note{font-size:12px;color:var(--muted);line-height:1.55}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+  .stat{border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;background:#fff}
+  .stat b{display:block;font-size:20px}
+  .stat span{font-size:12px;color:var(--muted)}
+  details.listbox{margin-top:14px}
+  details.listbox summary{cursor:pointer;font-weight:700;font-size:15px;padding:6px 0}
+  .qlist{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  .qlist td,.qlist th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+  .qlist th{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><div class="mark">A</div>
+      <div><h1>퀴즈 동사 81</h1><div class="subtitle">Quiz : Les verbes (1-1500) 81개만 · TEF Atelier</div></div>
+    </div>
+    <a class="link-btn" href="index.html">← 단어장</a>
+  </header>
+
+  <!-- 설정 -->
+  <section id="view-setup">
+    <div id="resume-box"></div>
+    <div class="card">
+      <div style="font-weight:800;font-size:17px">퀴즈 81개만 공부하기</div>
+      <div class="note" style="margin-top:8px">PDF 순서 그대로입니다. 22~81번은 앱의 B1·B2 동사 덱, 1~21번은 명사·형용사·연결어·관용 표현·A2·B1에 흩어져 있던 것까지 전부 모아놨습니다. bénéficier는 (à)/(de) 두 항목이라 항목 81개 · 카드 80장입니다.</div>
+      <label class="flabel">블록 크기 (한 번에 돌릴 개수)</label>
+      <div class="chips" id="size-chips"></div>
+      <button class="big-btn" id="start-btn">시작하기</button>
+      <div class="note" style="margin-top:12px">흐름은 사이클 학습과 같습니다: 블록 1회차 → 같은 블록 섞어서 2회차 → 2회차에서 틀린 것만 → 다음 블록. 3블록마다 틀린 단어를 섞어서 누적 복습하고, 마지막에는 끝까지 남은 것만 한 번 더 봅니다. 진도는 이 기기에 따로 저장돼서 기존 단어장·사이클 진도와 섞이지 않습니다.</div>
+      <details class="listbox">
+        <summary>81개 목록 먼저 보기</summary>
+        <table class="qlist"><thead><tr><th>#</th><th>퀴즈 표기</th><th>앱 카드</th><th>뜻</th></tr></thead><tbody id="list-body"></tbody></table>
+      </details>
+    </div>
+  </section>
+
+  <!-- 단계 안내 -->
+  <section id="view-intro" class="hidden">
+    <div class="card">
+      <div class="word-id" id="intro-kicker"></div>
+      <div class="intro-title" id="intro-title"></div>
+      <div class="intro-body" id="intro-body"></div>
+      <button class="big-btn" id="intro-btn">시작</button>
+      <button class="ghost-btn" id="intro-setup">설정으로 (진도는 저장돼 있어요)</button>
+    </div>
+  </section>
+
+  <!-- 학습 -->
+  <section id="view-study" class="hidden">
+    <div class="meta"><span id="meta-left"></span><span class="phase-badge" id="meta-phase"></span><span id="meta-right"></span></div>
+    <div class="bar"><i id="bar-fill" style="width:0%"></i></div>
+    <div class="card" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="word-id" id="card-id"></span>
+        <span class="word-id" id="card-count"></span>
+      </div>
+      <div class="fr-row">
+        <div class="fr" id="card-fr"></div>
+        <button class="audio-btn" id="audio-btn" title="발음 듣기">🔊</button>
+      </div>
+      <div class="quiz-note" id="card-note"></div>
+      <div id="answer-box" class="hidden">
+        <div class="ko" id="card-ko"></div>
+        <div class="en" id="card-en"></div>
+        <div class="quiz-answer" id="card-quiz-answer"></div>
+      </div>
+      <button class="reveal-btn" id="reveal-btn">뜻 보기 (먼저 머릿속으로 떠올려보세요)</button>
+      <div class="row hidden" id="grade-row">
+        <button class="btn-wrong" id="wrong-btn">✕ 틀렸어요</button>
+        <button class="btn-right" id="right-btn">○ 맞혔어요</button>
+      </div>
+    </div>
+    <button class="ghost-btn" id="study-setup">잠깐 멈추기 (진도 저장됨)</button>
+  </section>
+
+  <!-- 완료 -->
+  <section id="view-done" class="hidden">
+    <div class="card">
+      <div class="intro-title">🎉 81개를 끝까지 다 돌렸어요</div>
+      <div class="intro-body" id="done-body"></div>
+      <div class="statgrid">
+        <div class="stat"><b id="done-answered">0</b><span>총 인출 횟수</span></div>
+        <div class="stat"><b id="done-rate">0%</b><span>맞힌 비율</span></div>
+        <div class="stat"><b id="done-stubborn">0</b><span>끝까지 틀린 단어</span></div>
+      </div>
+      <div id="done-stubborn-list" class="note" style="margin-top:12px"></div>
+      <button class="big-btn" id="done-again">처음부터 다시 시작하기</button>
+      <a href="index.html" style="text-decoration:none"><button class="ghost-btn">단어장으로 돌아가기</button></a>
+    </div>
+  </section>
+</div>
+
+<script>
+const CARDS = [{"id": "L3-051", "lexique": 3, "number": 51, "fr": "supplémentaire", "en": "supplementary", "ko": "추가적인"}, {"id": "L3-099", "lexique": 3, "number": 99, "fr": "vulnérable", "en": "vulnerable", "ko": "취약한"}, {"id": "L6-1048", "lexique": 6, "number": 1048, "fr": "fermier / fermière", "en": "farmer", "ko": "농부"}, {"id": "L6-1060", "lexique": 6, "number": 1060, "fr": "stagiaire", "en": "Intern", "ko": "인턴, 견습생"}, {"id": "E7-046", "lexique": 7, "number": 46, "fr": "Au milieu de", "en": "In the middle of", "ko": "~의 중간에", "ex": "", "exEn": ""}, {"id": "L6-492", "lexique": 6, "number": 492, "fr": "au contraire (de)", "en": "on the contrary", "ko": "반대로, 오히려"}, {"id": "L6-498", "lexique": 6, "number": 498, "fr": "d'ailleurs", "en": "by the way, moreover", "ko": "또한, 게다가"}, {"id": "L6-507", "lexique": 6, "number": 507, "fr": "du fait de+qc / que+ind", "en": "due to", "ko": "-때문에"}, {"id": "E7-019", "lexique": 7, "number": 19, "fr": "À la suite de", "en": "Following, after", "ko": "~후에", "ex": "À la suite de l'incident, il a appelé la police.", "exEn": "Following the incident, he called the police."}, {"id": "L6-525", "lexique": 6, "number": 525, "fr": "à travers", "en": "through", "ko": "통해, ~를 통하여"}, {"id": "L6-530", "lexique": 6, "number": 530, "fr": "à part", "en": "separately", "ko": "별도로, 따로"}, {"id": "E7-281", "lexique": 7, "number": 281, "fr": "Tandis que", "en": "While, whereas (introduces a contrast)", "ko": "반면에, 반대로 (대조를 소개하다)", "ex": "Il travaille tandis que ses amis sont en vacances.", "exEn": "He is working while his friends are on vacation."}, {"id": "L6-549", "lexique": 6, "number": 549, "fr": "en matière de", "en": "In terms of", "ko": "관련하여"}, {"id": "L6-571", "lexique": 6, "number": 571, "fr": "au fond", "en": "basically", "ko": "사실상, 모든 걸 생각해 봤을 때"}, {"id": "L6-1107", "lexique": 6, "number": 1107, "fr": "maladroite", "en": "clumsy / awkward", "ko": "미숙한, 덤벙대는, 어설픈"}, {"id": "L6-1197", "lexique": 6, "number": 1197, "fr": "piller", "en": "to pillage, to plunder", "ko": "약탈하다, 강탈하다"}, {"id": "L6-1263", "lexique": 6, "number": 1263, "fr": "l'œuvre (f.)", "en": "work, artwork", "ko": "작품, 작업, 일"}, {"id": "L6-1307", "lexique": 6, "number": 1307, "fr": "litigieux / litigieuse", "en": "contentious, litigious", "ko": "논쟁의, 분쟁의"}, {"id": "L6-1308", "lexique": 6, "number": 1308, "fr": "arbitrer", "en": "to arbitrate, to mediate", "ko": "중재하다. 조정하다."}, {"id": "L6-1332", "lexique": 6, "number": 1332, "fr": "le taux de chômage", "en": "unemployment rate", "ko": "실업률"}, {"id": "L6-1344", "lexique": 6, "number": 1344, "fr": "le décalage", "en": "gap, discrepancy", "ko": "차이, 간격"}, {"id": "L6-003", "lexique": 6, "number": 3, "fr": "accomplir", "en": "to accomplish", "ko": "실행하다, 끝마치다"}, {"id": "L6-008", "lexique": 6, "number": 8, "fr": "affliger / s'affliger", "en": "to sadden / to grieve", "ko": "몹시 슬프게 하다 / 몹시 슬퍼하다"}, {"id": "L6-014", "lexique": 6, "number": 14, "fr": "appuyer", "en": "to support", "ko": "받치다, 누르다, 기대다"}, {"id": "L6-015", "lexique": 6, "number": 15, "fr": "atteindre", "en": "to reach", "ko": "도달하다, 도착하다, 연락을 취하다"}, {"id": "L6-023", "lexique": 6, "number": 23, "fr": "appartenir (à)", "en": "to belong (to)", "ko": "-에 속하다, -의 일부다, -의 것이다"}, {"id": "L6-024", "lexique": 6, "number": 24, "fr": "apercevoir / s'apercevoir (de)", "en": "to perceive / to realize", "ko": "발견하다, 알아보다 / 깨닫다"}, {"id": "L6-037", "lexique": 6, "number": 37, "fr": "bénéficier", "en": "to benefit (from)", "ko": "(à) -에 도움이 되다, (de) -에 득을 보다"}, {"id": "L6-044", "lexique": 6, "number": 44, "fr": "cesser (de)", "en": "to stop, to cease", "ko": "중단되다, 멈추다"}, {"id": "L6-048", "lexique": 6, "number": 48, "fr": "conseiller", "en": "to advise", "ko": "권고하다, 충고하다, 권하다"}, {"id": "L6-058", "lexique": 6, "number": 58, "fr": "craindre", "en": "to fear", "ko": "겁내다, 무서워하다, 걱정하다"}, {"id": "L6-059", "lexique": 6, "number": 59, "fr": "consulter", "en": "to consult", "ko": "상담하다"}, {"id": "L6-061", "lexique": 6, "number": 61, "fr": "dérouler", "en": "to unroll, to unfold", "ko": "풀다, 펼치다"}, {"id": "L6-062", "lexique": 6, "number": 62, "fr": "dépêcher / se dépêcher", "en": "to dispatch / to hurry", "ko": "급히 보내다 / 서두르다"}, {"id": "L6-073", "lexique": 6, "number": 73, "fr": "diffuser", "en": "to broadcast, to spread", "ko": "흩뿌리다, 방송하다"}, {"id": "L6-075", "lexique": 6, "number": 75, "fr": "demeurer", "en": "to remain", "ko": "-로 남아있다, -인 채로 있다"}, {"id": "L6-076", "lexique": 6, "number": 76, "fr": "diriger", "en": "to direct, to manage", "ko": "경영하다, 관리하다, 지휘하다"}, {"id": "L6-077", "lexique": 6, "number": 77, "fr": "disparaître", "en": "to disappear", "ko": "사라지다, 떠나다"}, {"id": "L6-086", "lexique": 6, "number": 86, "fr": "entraîner", "en": "to train, to lead", "ko": "이끌다, 훈련하다, 부추기다"}, {"id": "L6-089", "lexique": 6, "number": 89, "fr": "enlever / s'enlever", "en": "to remove, to take away / to come off", "ko": "없애다, 치우다, 운반하다 / 올라가다, 지워지다"}, {"id": "L6-098", "lexique": 6, "number": 98, "fr": "élire", "en": "to elect", "ko": "선출하다, 고르다, 뽑다."}, {"id": "L6-099", "lexique": 6, "number": 99, "fr": "engager", "en": "to hire, to engage", "ko": "걸다, 고용하다, 약혼하다"}, {"id": "L6-105", "lexique": 6, "number": 105, "fr": "se fier", "en": "to rely on", "ko": "믿다, 신뢰하다"}, {"id": "L6-106", "lexique": 6, "number": 106, "fr": "faillir", "en": "to almost do / to fail (to)", "ko": "- 할 뻔 하다, (à) 어기다, 결핍되다"}, {"id": "L6-119", "lexique": 6, "number": 119, "fr": "gratter", "en": "to scratch", "ko": "긁다, 문지르다"}, {"id": "L6-121", "lexique": 6, "number": 121, "fr": "gêner", "en": "to hinder / to bother", "ko": "제약하다, 구속하다, 불안하게 하다"}, {"id": "L6-122", "lexique": 6, "number": 122, "fr": "grimper", "en": "to climb", "ko": "기어오르다"}, {"id": "L6-129", "lexique": 6, "number": 129, "fr": "gaspiller", "en": "to waste", "ko": "낭비하다, 허비하다"}, {"id": "L6-132", "lexique": 6, "number": 132, "fr": "habituer (à) / s'habituer (à)", "en": "to make (someone) accustomed to / to get used to", "ko": "익숙하게 하다 / 익숙해지다"}, {"id": "L6-150", "lexique": 6, "number": 150, "fr": "induire", "en": "to induce", "ko": "결론을 끌어내다, 유발하다"}, {"id": "L6-151", "lexique": 6, "number": 151, "fr": "influencer", "en": "to influence", "ko": "영향을 주다"}, {"id": "L6-156", "lexique": 6, "number": 156, "fr": "intervenir", "en": "to intervene", "ko": "중재하다, 개입하다"}, {"id": "L6-157", "lexique": 6, "number": 157, "fr": "interrompre", "en": "to interrupt", "ko": "중단하다, 방해하다"}, {"id": "L6-158", "lexique": 6, "number": 158, "fr": "interférer", "en": "to interfere", "ko": "간섭하다, 중재하다, 방해하다"}, {"id": "L6-161", "lexique": 6, "number": 161, "fr": "irriter", "en": "to irritate", "ko": "성질나게 하다"}, {"id": "L6-172", "lexique": 6, "number": 172, "fr": "lâcher", "en": "to release", "ko": "느슨하게 하다, 늦추다, 놓아주다"}, {"id": "L6-178", "lexique": 6, "number": 178, "fr": "se méfier (de)", "en": "to distrust, to be wary of", "ko": "불신하다, 경계하다"}, {"id": "L6-180", "lexique": 6, "number": 180, "fr": "mériter", "en": "to deserve", "ko": "가치가 있다, 자격이 있다"}, {"id": "L6-181", "lexique": 6, "number": 181, "fr": "modérer", "en": "to moderate", "ko": "절제하다, 자제하다"}, {"id": "L6-188", "lexique": 6, "number": 188, "fr": "minorer", "en": "to underestimate", "ko": "과소 평가하다, 낮게 매기다"}, {"id": "L6-195", "lexique": 6, "number": 195, "fr": "négliger", "en": "to neglect", "ko": "소홀히 하다, 무시하다"}, {"id": "L6-198", "lexique": 6, "number": 198, "fr": "nuire (à)", "en": "to harm", "ko": "(을) 해치다, 훼손하다"}, {"id": "L6-201", "lexique": 6, "number": 201, "fr": "obliger / s'obliger", "en": "to oblige / to commit oneself", "ko": "의무를 지우다 / 책임을 지다"}, {"id": "L6-202", "lexique": 6, "number": 202, "fr": "omettre", "en": "to omit", "ko": "생략하다, 빼다"}, {"id": "L6-210", "lexique": 6, "number": 210, "fr": "parvenir (à)", "en": "to reach", "ko": "(-에) 이르다, 도달하다"}, {"id": "L6-215", "lexique": 6, "number": 215, "fr": "percevoir", "en": "to perceive", "ko": "이해하다, 지각하다"}, {"id": "L6-216", "lexique": 6, "number": 216, "fr": "persuader", "en": "to persuade", "ko": "설득하다, 납득시키다"}, {"id": "L6-228", "lexique": 6, "number": 228, "fr": "paraître", "en": "to appear", "ko": "나타나다, 출판하다, 발표되다"}, {"id": "L6-234", "lexique": 6, "number": 234, "fr": "prévoir", "en": "to foresee", "ko": "예상하다, 미리 계획하다"}, {"id": "L6-235", "lexique": 6, "number": 235, "fr": "prévenir", "en": "to warn", "ko": "알리다, 경고하다"}, {"id": "L6-236", "lexique": 6, "number": 236, "fr": "prédire", "en": "to predict", "ko": "예견하다"}, {"id": "L6-264", "lexique": 6, "number": 264, "fr": "rédiger", "en": "to write / to draft", "ko": "작성하다, 쓰다"}, {"id": "L6-269", "lexique": 6, "number": 269, "fr": "ressembler (à)", "en": "to resemble, to look like", "ko": "-와 닮다"}, {"id": "L6-295", "lexique": 6, "number": 295, "fr": "soigner", "en": "to care for", "ko": "치료하다, 마음을 쓰다, 돌보다"}, {"id": "L6-328", "lexique": 6, "number": 328, "fr": "tricher", "en": "to cheat", "ko": "속임수를 쓰다, 컨닝하다"}, {"id": "L6-379", "lexique": 6, "number": 379, "fr": "faire la connaissance de", "en": "to meet", "ko": "-와 알게 되다, 친분이 생기다"}, {"id": "L6-395", "lexique": 6, "number": 395, "fr": "s'en faire", "en": "to worry", "ko": "걱정하다, 신경 쓰다"}, {"id": "L6-396", "lexique": 6, "number": 396, "fr": "s'en aller", "en": "to leave, to get away", "ko": "가버리다, 떠나다"}, {"id": "L6-397", "lexique": 6, "number": 397, "fr": "se rendre compte de", "en": "to realize", "ko": "-을 이해하다, 깨닫다"}, {"id": "L6-399", "lexique": 6, "number": 399, "fr": "tomber en panne", "en": "to break down", "ko": "고장나다"}];
+const ENTRIES = [{"n": 1, "pid": "L3-051", "pfr": "supplémentaire", "pen": "additional"}, {"n": 2, "pid": "L3-099", "pfr": "vulnérable", "pen": "vulnerable"}, {"n": 3, "pid": "L6-1048", "pfr": "fermier", "pen": "farmer"}, {"n": 4, "pid": "L6-1060", "pfr": "stagiaire", "pen": "intern"}, {"n": 5, "pid": "E7-046", "pfr": "au milieu de", "pen": "in the middle of"}, {"n": 6, "pid": "L6-492", "pfr": "au contraire", "pen": "on the contrary"}, {"n": 7, "pid": "L6-498", "pfr": "d'ailleurs", "pen": "besides / moreover"}, {"n": 8, "pid": "L6-507", "pfr": "du fait de", "pen": "due to"}, {"n": 9, "pid": "E7-019", "pfr": "à la suite de", "pen": "following"}, {"n": 10, "pid": "L6-525", "pfr": "à travers", "pen": "through"}, {"n": 11, "pid": "L6-530", "pfr": "à part", "pen": "apart"}, {"n": 12, "pid": "E7-281", "pfr": "tandis que", "pen": "while"}, {"n": 13, "pid": "L6-549", "pfr": "en matière de", "pen": "regarding / in terms of"}, {"n": 14, "pid": "L6-571", "pfr": "au fond", "pen": "basically / fundamentally"}, {"n": 15, "pid": "L6-1107", "pfr": "maladroite (ou maladroit)", "pen": "clumsy (feminine)"}, {"n": 16, "pid": "L6-1197", "pfr": "piller", "pen": "loot"}, {"n": 17, "pid": "L6-1263", "pfr": "œuvre", "pen": "work (artistic or intellectual)"}, {"n": 18, "pid": "L6-1307", "pfr": "litigieux", "pen": "contentious"}, {"n": 19, "pid": "L6-1308", "pfr": "arbitrer", "pen": "arbitrate"}, {"n": 20, "pid": "L6-1332", "pfr": "le taux de chômage", "pen": "unemployment rate"}, {"n": 21, "pid": "L6-1344", "pfr": "décalage", "pen": "gap / discrepancy"}, {"n": 22, "pid": "L6-003", "pfr": "accomplir", "pen": "accomplish"}, {"n": 23, "pid": "L6-008", "pfr": "affliger / s'affliger", "pen": "afflict / be afflicted"}, {"n": 24, "pid": "L6-014", "pfr": "appuyer", "pen": "support"}, {"n": 25, "pid": "L6-015", "pfr": "atteindre", "pen": "reach"}, {"n": 26, "pid": "L6-023", "pfr": "appartenir (à)", "pen": "belong (to)"}, {"n": 27, "pid": "L6-024", "pfr": "s'apercevoir (de)", "pen": "notice / realize"}, {"n": 28, "pid": "L6-037", "pfr": "bénéficier (à)", "pen": "benefit (someone)"}, {"n": 29, "pid": "L6-037", "pfr": "bénéficier (de)", "pen": "benefit (from)"}, {"n": 30, "pid": "L6-044", "pfr": "cesser (de)", "pen": "stop (doing something)"}, {"n": 31, "pid": "L6-048", "pfr": "conseiller", "pen": "advise"}, {"n": 32, "pid": "L6-058", "pfr": "craindre", "pen": "fear"}, {"n": 33, "pid": "L6-059", "pfr": "consulter", "pen": "consult"}, {"n": 34, "pid": "L6-061", "pfr": "dérouler", "pen": "unfold"}, {"n": 35, "pid": "L6-062", "pfr": "dépêcher / se dépêcher", "pen": "dispatch / hurry"}, {"n": 36, "pid": "L6-073", "pfr": "diffuser", "pen": "broadcast"}, {"n": 37, "pid": "L6-075", "pfr": "demeurer", "pen": "remain / reside"}, {"n": 38, "pid": "L6-076", "pfr": "diriger", "pen": "direct"}, {"n": 39, "pid": "L6-077", "pfr": "disparaître", "pen": "disappear"}, {"n": 40, "pid": "L6-086", "pfr": "entraîner", "pen": "lead to / train"}, {"n": 41, "pid": "L6-089", "pfr": "enlever / s'enlever", "pen": "remove / come off"}, {"n": 42, "pid": "L6-098", "pfr": "élire", "pen": "elect"}, {"n": 43, "pid": "L6-099", "pfr": "engager", "pen": "hire / engage"}, {"n": 44, "pid": "L6-105", "pfr": "se fier", "pen": "trust"}, {"n": 45, "pid": "L6-106", "pfr": "faillir", "pen": "almost (do something) / fail"}, {"n": 46, "pid": "L6-119", "pfr": "gratter", "pen": "scratch"}, {"n": 47, "pid": "L6-121", "pfr": "gêner", "pen": "bother / hinder"}, {"n": 48, "pid": "L6-122", "pfr": "grimper", "pen": "climb"}, {"n": 49, "pid": "L6-129", "pfr": "gaspiller", "pen": "waste"}, {"n": 50, "pid": "L6-132", "pfr": "habituer (à) / s'habituer (à)", "pen": "get used to"}, {"n": 51, "pid": "L6-150", "pfr": "induire", "pen": "induce"}, {"n": 52, "pid": "L6-151", "pfr": "influencer", "pen": "influence"}, {"n": 53, "pid": "L6-156", "pfr": "intervenir", "pen": "intervene"}, {"n": 54, "pid": "L6-157", "pfr": "interrompre", "pen": "interrupt"}, {"n": 55, "pid": "L6-158", "pfr": "interférer", "pen": "interfere"}, {"n": 56, "pid": "L6-161", "pfr": "irriter", "pen": "irritate"}, {"n": 57, "pid": "L6-172", "pfr": "lâcher", "pen": "let go"}, {"n": 58, "pid": "L6-178", "pfr": "se méfier (de)", "pen": "distrust / beware (of)"}, {"n": 59, "pid": "L6-180", "pfr": "mériter", "pen": "deserve"}, {"n": 60, "pid": "L6-181", "pfr": "modérer", "pen": "moderate"}, {"n": 61, "pid": "L6-188", "pfr": "minorer", "pen": "downplay"}, {"n": 62, "pid": "L6-195", "pfr": "négliger", "pen": "neglect"}, {"n": 63, "pid": "L6-198", "pfr": "nuire (à)", "pen": "harm"}, {"n": 64, "pid": "L6-201", "pfr": "obliger / s'obliger", "pen": "oblige / make oneself"}, {"n": 65, "pid": "L6-202", "pfr": "omettre", "pen": "omit"}, {"n": 66, "pid": "L6-210", "pfr": "parvenir (à)", "pen": "reach / achieve"}, {"n": 67, "pid": "L6-215", "pfr": "percevoir", "pen": "perceive"}, {"n": 68, "pid": "L6-216", "pfr": "persuader", "pen": "persuade"}, {"n": 69, "pid": "L6-228", "pfr": "paraître", "pen": "appear"}, {"n": 70, "pid": "L6-234", "pfr": "prévoir", "pen": "foresee / plan"}, {"n": 71, "pid": "L6-235", "pfr": "prévenir", "pen": "prevent / warn"}, {"n": 72, "pid": "L6-236", "pfr": "prédire", "pen": "predict"}, {"n": 73, "pid": "L6-264", "pfr": "rédiger", "pen": "write / draft"}, {"n": 74, "pid": "L6-269", "pfr": "ressembler (à)", "pen": "resemble"}, {"n": 75, "pid": "L6-295", "pfr": "soigner", "pen": "care for / treat"}, {"n": 76, "pid": "L6-328", "pfr": "tricher", "pen": "cheat"}, {"n": 77, "pid": "L6-379", "pfr": "faire la connaissance de", "pen": "meet / get to know"}, {"n": 78, "pid": "L6-395", "pfr": "s'en faire", "pen": "worry"}, {"n": 79, "pid": "L6-396", "pfr": "s'en aller", "pen": "go away / leave"}, {"n": 80, "pid": "L6-397", "pfr": "se rendre compte de", "pen": "realize"}, {"n": 81, "pid": "L6-399", "pfr": "tomber en panne", "pen": "break down"}];
+const BY_ID = {}; CARDS.forEach(c=>BY_ID[c.id]=c);
+const BY_N = {}; ENTRIES.forEach(e=>BY_N[e.n]=e);
+const ALL = ENTRIES.map(e=>e.n);
+const KEY = "tef-quiz81-v1";
+const $ = id => document.getElementById(id);
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+function lexShort(c){ return (c.lexique===0?"A0":c.lexique===7?"E7":"L"+c.lexique)+"-"+String(c.number).padStart(3,"0"); }
+function chunks(size){ const out=[]; for(let i=0;i<ALL.length;i+=size) out.push(ALL.slice(i,i+size)); return out; }
+function phaseLabel(p){ return {r1:"1회차", r2:"2회차 · 섞어서", r3:"틀린 것만", cum:"누적 복습", final:"마지막 복습"}[p] || p; }
+
+let S = null;
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function load(){ try{ const o=JSON.parse(localStorage.getItem(KEY)||"null"); return (o && o.v===1 && Array.isArray(o.queue)) ? o : null; }catch(e){ return null; } }
+
+let selSize = 20;
+function renderSetup(){
+  const saved = load();
+  const rb = $("resume-box");
+  if(saved && saved.view!=="done"){
+    const tb = chunks(saved.size).length;
+    rb.innerHTML = '<div class="resume"><b>이어서 할 퀴즈 학습이 있어요</b><div style="margin-top:6px;font-size:14px">'
+      + '블록 ' + Math.min(saved.blockIdx+1,tb) + '/' + tb + ' · ' + phaseLabel(saved.stage)
+      + ' · 지금까지 ' + saved.stats.answered + '번 인출</div>'
+      + '<button class="big-btn" id="resume-btn" style="margin-top:12px">이어서 계속하기</button>'
+      + '<button class="ghost-btn danger" id="discard-btn">이 학습 버리기</button></div>';
+    $("resume-btn").onclick = ()=>{ S=saved; selSize=saved.size; if(S.view==="intro"){ renderIntro(); show("intro"); } else if(S.view==="done"){ renderDone(); show("done"); } else { show("study"); renderCard(); } };
+    $("discard-btn").onclick = ()=>{ if(confirm("진행 중인 퀴즈 학습을 버릴까요? (기존 단어장 진도는 그대로입니다)")){ localStorage.removeItem(KEY); renderSetup(); } };
+  } else rb.innerHTML = "";
+  $("size-chips").innerHTML = [10,20,27].map(n=>'<button class="chip'+(n===selSize?" on":"")+'" data-size="'+n+'">'+n+'개씩</button>').join("");
+  document.querySelectorAll("[data-size]").forEach(b=>b.onclick=()=>{ selSize=+b.dataset.size; renderSetup(); });
+  $("list-body").innerHTML = ENTRIES.map(e=>{ const c=BY_ID[e.pid]; return '<tr><td>'+e.n+'</td><td>'+e.pfr+'</td><td>'+lexShort(c)+'</td><td>'+(c?c.ko:"")+'</td></tr>'; }).join("");
+  show("setup");
+}
+function setIntro(kicker,title,body,btn){ S.intro={kicker:kicker,title:title,body:body,btn:btn}; S.view="intro"; }
+function enterBlock(note){
+  const bs = chunks(S.size);
+  S.block = bs[S.blockIdx].slice();
+  S.stage="r1"; S.queue=S.block.slice(); S.idx=0; S.wrongR1=0; S.wrongR2=[];
+  setIntro("퀴즈 81 · 블록 "+(S.blockIdx+1)+"/"+bs.length,
+    "블록 "+(S.blockIdx+1)+" / "+bs.length+" — "+S.block.length+"개",
+    (note? note+" ":"")+"먼저 순서대로 한 번 봅니다. 바로 안 떠오르면 틀린 걸로 넘기세요. 같은 블록을 섞어서 한 번 더 하고, 그때도 틀린 것만 마지막으로 봅니다.",
+    "1회차 시작");
+}
+function startStudy(){
+  S = { v:1, size:selSize, blockIdx:0, stage:"r1", view:"intro", queue:[], idx:0, block:[],
+        wrongR1:0, wrongR2:[], cumPending:[], stubborn:[], blocksSinceCum:0,
+        stats:{answered:0, correct:0}, intro:null };
+  enterBlock("");
+  save(); renderIntro(); show("intro");
+}
+function finishBlock(note){
+  S.blocksSinceCum++;
+  if(S.blocksSinceCum>=3){
+    S.blocksSinceCum=0;
+    if(S.cumPending.length){
+      S.stage="cum"; S.queue=shuffle(S.cumPending); S.idx=0; const n=S.queue.length; S.cumPending=[];
+      setIntro("3블록 누적 복습", "틀렸던 단어 "+n+"개, 섞어서 한 번 더",
+        (note? note+" ":"")+"지난 블록들에서 2회차에 틀렸던 단어들입니다. 여기서 또 틀리면 마지막 복습 목록으로 넘어갑니다.", "누적 복습 시작");
+      return;
+    }
+  }
+  advance(note);
+}
+function advance(note){
+  S.blockIdx++;
+  if(S.blockIdx < chunks(S.size).length){ enterBlock(note); }
+  else if(S.stubborn.length){
+    S.stage="final"; S.queue=shuffle(S.stubborn); S.idx=0;
+    setIntro("범위 끝", "마지막 복습 — 끝까지 틀린 단어 "+S.stubborn.length+"개",
+      (note? note+" ":"")+"블록 3회차와 누적 복습에서도 틀렸던 단어들만 모았습니다. 이걸 끝내면 완료됩니다.", "마지막 복습 시작");
+  } else { S.view="done"; }
+}
+function endStage(){
+  if(S.stage==="r1"){
+    S.stage="r2"; S.queue=shuffle(S.block); S.idx=0;
+    setIntro("블록 "+(S.blockIdx+1)+" · 1회차 끝", "같은 "+S.block.length+"개, 순서를 섞어서 다시",
+      "1회차에서 틀린 단어는 "+S.wrongR1+"개였어요. 이번에 맞히는지가 진짜입니다.", "2회차 시작");
+  } else if(S.stage==="r2"){
+    if(S.wrongR2.length){
+      S.stage="r3"; S.queue=shuffle(S.wrongR2); S.idx=0;
+      setIntro("블록 "+(S.blockIdx+1)+" · 2회차 끝", "틀린 "+S.wrongR2.length+"개만 한 번 더",
+        "여기서 맞히면 이 블록은 졸업입니다. 또 틀리면 누적·마지막 복습에서 다시 만납니다.", "틀린 것만 시작");
+    } else finishBlock("2회차에서 전부 맞혔어요 🎉");
+  } else if(S.stage==="r3"){
+    finishBlock("");
+  } else if(S.stage==="cum"){
+    advance("누적 복습 완료");
+  } else if(S.stage==="final"){
+    S.view="done";
+  }
+}
+function afterTransition(){
+  save();
+  if(S.view==="done"){ renderDone(); show("done"); }
+  else { renderIntro(); show("intro"); }
+}
+function renderIntro(){
+  $("intro-kicker").textContent = S.intro? S.intro.kicker : "";
+  $("intro-title").textContent = S.intro? S.intro.title : "";
+  $("intro-body").textContent = S.intro? S.intro.body : "";
+  $("intro-btn").textContent = S.intro? S.intro.btn : "시작";
+}
+$("intro-btn").onclick = ()=>{ S.view="study"; save(); show("study"); renderCard(); };
+$("intro-setup").onclick = ()=>{ save(); renderSetup(); };
+$("study-setup").onclick = ()=>{ save(); renderSetup(); };
+
+function currentEntry(){ return BY_N[S.queue[S.idx]]; }
+function renderCard(){
+  const e = currentEntry(); if(!e){ endStage(); afterTransition(); return; }
+  const c = BY_ID[e.pid];
+  const tb = chunks(S.size).length;
+  $("meta-left").textContent = S.stage==="cum" ? "누적 복습" : S.stage==="final" ? "마지막 복습" : ("블록 "+(S.blockIdx+1)+"/"+tb);
+  $("meta-phase").textContent = phaseLabel(S.stage);
+  $("meta-right").textContent = "누적 틀림 " + S.stubborn.length + "개";
+  $("bar-fill").style.width = Math.round(S.idx/S.queue.length*100)+"%";
+  $("card-id").textContent = "퀴즈 " + e.n + "번 · " + lexShort(c);
+  $("card-count").textContent = (S.idx+1)+" / "+S.queue.length;
+  $("card-fr").textContent = c.fr;
+  const sameForm = e.pfr.replace(/’/g,"'").toLowerCase() === c.fr.replace(/’/g,"'").toLowerCase();
+  $("card-note").textContent = sameForm ? "" : ("퀴즈 표기: " + e.pfr);
+  $("answer-box").classList.add("hidden");
+  $("grade-row").classList.add("hidden");
+  $("reveal-btn").classList.remove("hidden");
+  window._revealed=false;
+}
+$("reveal-btn").onclick = ()=>{
+  const e=currentEntry(); if(!e) return;
+  const c=BY_ID[e.pid];
+  $("card-ko").textContent = c.ko||"";
+  $("card-en").textContent = c.en||"";
+  $("card-quiz-answer").textContent = "퀴즈 답: " + e.pen;
+  $("answer-box").classList.remove("hidden");
+  $("grade-row").classList.remove("hidden");
+  $("reveal-btn").classList.add("hidden");
+  window._revealed=true;
+};
+function answer(ok){
+  const e=currentEntry(); if(!e || !window._revealed) return;
+  const uid=e.n;
+  S.stats.answered++; if(ok) S.stats.correct++;
+  if(S.stage==="r1" && !ok) S.wrongR1++;
+  if(S.stage==="r2" && !ok){ S.wrongR2.push(uid); if(!S.cumPending.includes(uid)) S.cumPending.push(uid); }
+  if((S.stage==="r3" || S.stage==="cum") && !ok){ if(!S.stubborn.includes(uid)) S.stubborn.push(uid); }
+  S.idx++;
+  if(S.idx < S.queue.length){ save(); renderCard(); }
+  else { endStage(); afterTransition(); }
+}
+$("wrong-btn").onclick = ()=>answer(false);
+$("right-btn").onclick = ()=>answer(true);
+document.addEventListener("keydown", e=>{
+  if($("view-study").classList.contains("hidden")) return;
+  if(!window._revealed && (e.code==="Space"||e.code==="Enter")){ e.preventDefault(); $("reveal-btn").click(); }
+  else if(window._revealed && e.key==="ArrowLeft") answer(false);
+  else if(window._revealed && e.key==="ArrowRight") answer(true);
+});
+
+/* 발음: 내장 MP3 우선, 없으면 기기 프랑스어 음성 */
+function cleanFr(t){ return (t||"").replace(/\s*\([fm]\.\)/gi,"").replace(/\s*\/\s*/g," ").replace(/\s{2,}/g," ").trim(); }
+$("audio-btn").onclick = ()=>{
+  const e=currentEntry(); if(!e) return;
+  const c=BY_ID[e.pid];
+  const text=cleanFr(c.fr);
+  const a=new Audio("audio/"+encodeURIComponent(c.id)+".mp3");
+  let fell=false;
+  const fallback=()=>{ if(fell) return; fell=true; try{ const u=new SpeechSynthesisUtterance(text); u.lang="fr-FR"; u.rate=.92; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(err){} };
+  a.addEventListener("error", fallback, {once:true});
+  const p=a.play(); if(p&&p.catch) p.catch(fallback);
+};
+
+function renderDone(){
+  $("done-answered").textContent = S.stats.answered;
+  $("done-rate").textContent = S.stats.answered? Math.round(S.stats.correct/S.stats.answered*100)+"%":"-";
+  $("done-stubborn").textContent = S.stubborn.length;
+  $("done-body").textContent = "퀴즈 81개를 끝까지 돌렸습니다.";
+  $("done-stubborn-list").innerHTML = S.stubborn.length
+    ? "끝까지 틀린 단어: " + S.stubborn.map(n=>{ const e=BY_N[n]; const c=BY_ID[e.pid]; return n+"번 "+c.fr+" = "+c.ko; }).join(" · ")
+    : "끝까지 남은 틀린 단어가 없습니다.";
+}
+$("done-again").onclick = ()=>{ localStorage.removeItem(KEY); S=null; renderSetup(); };
+$("start-btn").onclick = startStudy;
+
+function show(name){
+  ["setup","intro","study","done"].forEach(v=>$("view-"+v).classList.toggle("hidden", v!==name));
+  window.scrollTo(0,0);
+}
+renderSetup();
+</script>
+</body>
+</html>

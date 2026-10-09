@@ -34,6 +34,18 @@ ok(idxCards.every(c => c.en && c.en.trim()), "영어 뜻 빈 카드 없음");
 const cycCards = JSON.parse(read("cycle.html").match(/const CARDS = (\[.*?\]);/s)[1]);
 ok(JSON.stringify(cycCards) === JSON.stringify(idxCards), "cycle 데이터 = index 데이터 (완전 일치)");
 
+const quizHtml = read("quiz81.html");
+const quizCards = JSON.parse(quizHtml.match(/const CARDS = (\[.*?\]);/s)[1]);
+const quizEntries = JSON.parse(quizHtml.match(/const ENTRIES = (\[.*?\]);/s)[1]);
+ok(quizEntries.length === 81, `quiz81 항목 수 = 81 (실제 ${quizEntries.length})`);
+ok(quizEntries.every((e, i) => e.n === i + 1), "quiz81 항목 번호가 1~81 순서대로");
+ok(quizEntries.every(e => idxCards.some(c => c.id === e.pid)), "quiz81 항목의 카드가 전부 index에 실재");
+ok(new Set(quizEntries.map(e => e.pid)).size === 80, "quiz81 고유 카드 = 80장 (bénéficier 중복 1쌍)");
+ok(quizCards.length === 80 && quizCards.every(c => {
+  const src = idxCards.find(x => x.id === c.id);
+  return src && src.fr === c.fr && src.ko === c.ko && src.en === c.en;
+}), "quiz81 내장 카드가 index와 어긋나지 않음");
+
 const examRaw = JSON.parse(read("exam.html").match(/const RAW_CARDS = (\[.*?\]);/s)[1]);
 const byId = Object.fromEntries(idxCards.map(c => [c.id, c]));
 ok(examRaw.every(e => byId[e.i] && byId[e.i].fr === e.f && (byId[e.i].ko || "") === e.k),
@@ -46,7 +58,7 @@ console.log("\n[버전·링크]");
 const appVer = idxHtml.match(/const APP_VERSION = "(\d+)"/)[1];
 ok(read("version.txt").trim() === appVer, `버전 일치 (APP_VERSION=${appVer}, version.txt=${read("version.txt").trim()})`);
 
-const PAGES = ["index.html", "exam.html", "ce.html", "topics.html", "cognates.html", "cycle.html"];
+const PAGES = ["index.html", "exam.html", "ce.html", "topics.html", "cognates.html", "cycle.html", "quiz81.html"];
 for (const f of PAGES) {
   const hrefs = [...read(f).matchAll(/href="([^"#]+)"/g)].map(m => m[1]);
   const bad = hrefs.filter(h => h.endsWith(".html") || h.includes(".html?"))
@@ -109,6 +121,8 @@ function loadPage(file) {
        `동사 덱 총계 402 표시 (실제: ${d.getElementById("totalCount")?.textContent})`);
     const cycBtn = [...d.querySelectorAll('a[href="cycle.html"]')];
     ok(cycBtn.length >= 1, "헤더에 사이클 버튼 있음");
+    const quizBtn = [...d.querySelectorAll('a[href="quiz81.html"]')];
+    ok(quizBtn.length >= 1, "헤더에 퀴즈81 버튼 있음");
     const before = d.getElementById("doneCount")?.textContent;
     d.getElementById("revealBtn")?.click();
     await sleep(100);
@@ -149,6 +163,40 @@ function loadPage(file) {
     ok(dom.window.localStorage.getItem("tef-5hour-vocab-v1") === '{"SENTINEL":1}',
        "사이클이 기존 단어장 진도를 건드리지 않음");
     ok(errors.length === 0, "사이클 흐름 중 오류 없음", errors[0] || "");
+    dom.window.close();
+  }
+
+  console.log("\n[흐름: 퀴즈81 quiz81]");
+  {
+    const { dom, errors } = loadPage("quiz81.html");
+    const d = dom.window.document;
+    await sleep(300);
+    dom.window.localStorage.setItem("tef-5hour-vocab-v1", '{"SENTINEL":1}');
+    dom.window.localStorage.setItem("tef-cycle-v1", '{"SENTINEL":2}');
+    [...d.querySelectorAll("[data-size]")].find(c => c.dataset.size === "27")?.click();
+    d.getElementById("start-btn").click();
+    await sleep(50);
+    const vis = id => !d.getElementById(id).classList.contains("hidden");
+    let steps = 0, n = 0;
+    while (!vis("view-done") && steps < 4000) {
+      steps++;
+      if (vis("view-intro")) { d.getElementById("intro-btn").click(); await sleep(1); continue; }
+      if (vis("view-study")) {
+        d.getElementById("reveal-btn").click();
+        n++;
+        d.getElementById(n % 3 === 0 ? "wrong-btn" : "right-btn").click();
+        await sleep(1); continue;
+      }
+      await sleep(3);
+    }
+    ok(vis("view-done"), `퀴즈81 끝까지 완주 (steps=${steps})`);
+    ok(+d.getElementById("done-answered").textContent > 81, "퀴즈81 총 인출 횟수 > 81 (반복 발생)");
+    ok(!!dom.window.localStorage.getItem("tef-quiz81-v1"), "퀴즈81 진도가 별도 키에 저장됨");
+    ok(dom.window.localStorage.getItem("tef-5hour-vocab-v1") === '{"SENTINEL":1}',
+       "퀴즈81이 기존 단어장 진도를 건드리지 않음");
+    ok(dom.window.localStorage.getItem("tef-cycle-v1") === '{"SENTINEL":2}',
+       "퀴즈81이 사이클 진도를 건드리지 않음");
+    ok(errors.length === 0, "퀴즈81 흐름 중 오류 없음", errors[0] || "");
     dom.window.close();
   }
 

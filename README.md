@@ -11,6 +11,8 @@ A2·B1 500개 어휘 + A1·A2 1,466개 어휘 + B1·B2 1,401개 어휘 + B2 336�
 
 **[사이클 학습](https://sidebatch.github.io/atelier-tef/cycle.html)** — 블록(기본 20개) 단위 반복 학습: 1회차 → 같은 블록 섞어서 2회차 → 틀린 것만 → 다음 블록, 3블록마다 누적 복습. 진도는 기존 단어장과 분리 저장(`tef-cycle-v1`).
 
+**[퀴즈 동사 81](https://sidebatch.github.io/atelier-tef/quiz81.html)** — Quiz 'Les verbes (1-1500)' PDF 81개 항목만 PDF 순서대로 모아 사이클 방식으로 학습. 항목 81개·카드 80장(bénéficier (à)/(de)는 한 카드). 진도는 분리 저장(`tef-quiz81-v1`). 생성: `python3 scripts/build-quiz81.py`.
+
 ## 단어장 선택
 
 - A2·B1 단어 (500장): 원래 앱 그대로
@@ -50,4 +52,4 @@ cd tests && npm install   # 처음 한 번만
 node tests/run-tests.js
 ```
 
-검사 항목(37개): 카드 데이터 정합성(개수·중복·빈 뜻), 페이지 간 데이터 일치(index·exam·cycle), 버전 일치(APP_VERSION ↔ version.txt), 내부 링크·오디오 파일 실재, 전 페이지 무오류 로딩, 핵심 흐름 클릭 시뮬레이션(단어장 채점·진도 저장, 사이클 완주, 실전 문제 생성).
+검사 항목(51개): 카드 데이터 정합성(개수·중복·빈 뜻), 페이지 간 데이터 일치(index·exam·cycle·quiz81), 버전 일치(APP_VERSION ↔ version.txt), 내부 링크·오디오 파일 실재, 전 페이지 무오류 로딩, 핵심 흐름 클릭 시뮬레이션(단어장 채점·진도 저장, 사이클 완주, 퀴즈81 완주, 실전 문제 생성).
