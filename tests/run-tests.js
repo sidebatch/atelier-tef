@@ -135,6 +135,30 @@ function loadPage(file, seed) {
     dom.window.close();
   }
 
+  console.log("\n[회귀: 큐 정체 (전부 X여도 모든 카드가 돌아오는가)]");
+  {
+    const connDeck = idxCards.filter(c => c.lexique === 6 && c.number >= 548 && c.number <= 581);
+    const seed = { deck: "b1b2-conn", direction: "fr-ko", mode: "all", session: 1,
+      date: new Date().toLocaleDateString("en-CA"), dailyByDeck: {}, progress: {}, queues: {} };
+    const { dom, errors } = loadPage("index.html", seed);
+    const d = dom.window.document;
+    await sleep(400);
+    const seen = new Map(); let minGap = Infinity;
+    for (let step = 0; step < 140; step++) {
+      const fr = d.querySelector(".prompt")?.textContent || "";
+      if (seen.has(fr)) minGap = Math.min(minGap, step - seen.get(fr));
+      seen.set(fr, step);
+      d.getElementById("revealBtn")?.click();
+      await sleep(15);
+      d.getElementById("wrongBtn")?.click();
+      await sleep(15);
+    }
+    ok(seen.size === connDeck.length, `전부 X로 눌러도 ${connDeck.length}장 전부 등장 (실제 ${seen.size}장) — 정체 없음`);
+    ok(minGap >= 8, `X 카드 재등장 간격 최소 8장 유지 (실제 최소 ${minGap})`);
+    ok(errors.length === 0, "큐 정체 회귀 중 오류 없음", errors[0] || "");
+    dom.window.close();
+  }
+
   console.log("\n[흐름: 사이클 cycle]");
   {
     const { dom, errors } = loadPage("cycle.html");

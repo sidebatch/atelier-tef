@@ -672,7 +672,7 @@
     const main = $("#main");
 
     function freshState() {
-      return { version: SCHEMA_VERSION, date: TODAY, direction: "fr-ko", mode: "all", session: 1, deck: "base", dailyByDeck: {}, progress: {}, queues: {} };
+      return { version: SCHEMA_VERSION, date: TODAY, direction: "fr-ko", mode: "all", session: 1, deck: "base", dailyByDeck: {}, progress: {}, queues: {}, queueDue: {}, queueStep: {} };
     }
 
     function loadState() {
@@ -691,6 +691,8 @@
       if (migratingDailyCounts) {
         next.version = SCHEMA_VERSION;
         next.queues = {};
+        next.queueDue = {};
+        next.queueStep = {};
       }
       if (next.date !== TODAY) {
         next.date = TODAY;
@@ -704,6 +706,8 @@
       next.dailyByDeck ||= {};
       next.progress ||= {};
       next.queues ||= {};
+      next.queueDue ||= {};
+      next.queueStep ||= {};
       if (!DECKS.some(item => item.id === next.deck)) next.deck = "base";
       if (!DIRECTIONS.includes(next.direction)) next.direction = "fr-ko";
       for (const card of CARDS) {
@@ -793,6 +797,10 @@
       for (const card of scopeCards()) {
         if (!isMastered(card.id) && !queued.has(card.id)) queue.push(card.id);
       }
+      // 정체 방지: 고정 위치에 끼워 넣는 대신 "다시 나올 순서(due)"로 정렬한다.
+      // 오래 기다린 카드일수록 앞에 오므로, X가 계속 나와도 뒤쪽 카드가 영영 안 나오는 일이 없다.
+      const dueMap = (state.queueDue && state.queueDue[key]) || {};
+      queue.sort((a, b) => (dueMap[a] ?? 0) - (dueMap[b] ?? 0));
       state.queues[key] = queue;
       return queue;
     }
@@ -807,7 +815,7 @@
       toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    const APP_VERSION = "29";  // 배포할 때마다 version.txt와 함께 올리기
+    const APP_VERSION = "30";  // 배포할 때마다 version.txt와 함께 올리기
     // 진단: 로고(.brand)를 600ms 안에 3번 탭하면 상태 오버레이 표시
     const __dbgLog = [];
     function __dbg(msg) {
@@ -1252,6 +1260,17 @@ function cleanFrenchForSpeech(text) {
       else if (!onlinePromise) onlineFail();
     }
 
+    function reinsert(queue, id, delay) {
+      const key = queueKey();
+      state.queueStep ||= {}; state.queueDue ||= {};
+      const step = (state.queueStep[key] = (state.queueStep[key] || 0) + 1);
+      (state.queueDue[key] ||= {})[id] = step + delay;
+      queue.push(id);
+    }
+    function forgetDue(id) {
+      const key = queueKey();
+      if (state.queueDue && state.queueDue[key]) delete state.queueDue[key][id];
+    }
     function completeCard(id, msg) {
       const d = dailyOf();
       if (!d.completedIds.includes(id)) d.completedIds.push(id);
@@ -1271,17 +1290,19 @@ function cleanFrenchForSpeech(text) {
         if (gateCtx && entry.gate === "pending") {
           entry.gate = "passed";
           entry["type"].streak = MASTERY;
+          forgetDue(id);
           completeCard(id, "🎓 진짜 졸업! 쓰기까지 통과했어요");
         } else if (p.streak < MASTERY) {
           const delay = p.streak === 1 ? 12 : 18;
-          queue.splice(Math.min(delay, queue.length), 0, id);
+          reinsert(queue, id, delay);
         } else if (dir !== "type" && entry.gate !== "passed" && entry["type"].streak < MASTERY) {
           // 인식 졸업 → 쓰기 확인 관문. 쓰기를 통과해야 진짜 졸업.
           entry.gate = "pending";
-          queue.splice(Math.min(8, queue.length), 0, id);
+          reinsert(queue, id, 8);
           showToast("인식 졸업! 마지막 관문 — 쓰기로 한 번만 확인해요");
         } else {
           if (dir === "type") entry.gate = "passed";
+          forgetDue(id);
           completeCard(id);
         }
       } else {
@@ -1291,10 +1312,10 @@ function cleanFrenchForSpeech(text) {
         d.x = d.wrongIds.length;
         if (gateCtx) {
           if (entry.gate === "pending") { entry.gate = "course"; showToast("쓰기 코스로 이동 — 연속 3회 쓰기 성공이 필요해요"); }
-          queue.splice(Math.min(state.mode === "hard" ? 3 : 5, queue.length), 0, id);
+          reinsert(queue, id, state.mode === "hard" ? 3 : 5);
         } else {
           const delay = state.mode === "hard" ? 3 : 10;
-          queue.splice(Math.min(delay, queue.length), 0, id);
+          reinsert(queue, id, delay);
         }
       }
       setQueue(queue);
