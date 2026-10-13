@@ -188,6 +188,72 @@ function loadPage(file, seed) {
     dom.window.close();
   }
 
+  console.log("\n[저장 금고: 이중 백업·자동 복원]");
+  {
+    ok(fs.existsSync(path.join(ROOT, "storage-vault.js")), "storage-vault.js 파일 있음");
+    for (const f of ["index.html", "quiz81.html", "cycle.html", "exam.html", "ce.html"])
+      ok(read(f).includes("storage-vault.js"), f + "가 저장 금고를 불러옴");
+
+    // 최소 IndexedDB 스텁으로 금고 동작 검증
+    function makeIDB(store) {
+      function req() { return { result: undefined, error: null, onsuccess: null, onerror: null }; }
+      function fire(r, val) { setTimeout(() => { r.result = val; if (r.onsuccess) r.onsuccess(); }, 0); }
+      const db = { createObjectStore() {}, transaction() {
+        const tx = { oncomplete: null, onerror: null }; const ops = [];
+        const so = {
+          put(v, k) { const r = req(); ops.push(() => { store.set(k, v); fire(r, k); }); return r; },
+          get(k) { const r = req(); ops.push(() => fire(r, store.get(k))); return r; },
+          delete(k) { const r = req(); ops.push(() => { store.delete(k); fire(r, undefined); }); return r; },
+        };
+        tx.objectStore = () => so;
+        setTimeout(() => { ops.forEach(f => f()); setTimeout(() => { if (tx.oncomplete) tx.oncomplete(); }, 5); }, 0);
+        return tx;
+      } };
+      return { open() { const r = req(); setTimeout(() => {
+        if (!this._up) { this._up = true; if (r.onupgradeneeded) { r.result = db; r.onupgradeneeded(); } }
+        r.result = db; if (r.onsuccess) r.onsuccess(); }, 0); return r; } };
+    }
+    const vaultCode = read("storage-vault.js");
+    const disk = new Map(); const idb = makeIDB(disk);
+    const mkWin = html => new JSDOM(html, { url: "https://localhost/", runScripts: "dangerously", pretendToBeVisual: true,
+      beforeParse(w) { w.indexedDB = idb; w.eval(vaultCode); w.fetch = () => Promise.reject(new Error("offline"));
+        w.Audio = class { play() { return Promise.resolve(); } addEventListener() {} };
+        w.confirm = () => true; w.scrollTo = () => {};
+        if (!w.speechSynthesis) w.speechSynthesis = { cancel() {}, speak() {}, getVoices: () => [] }; } });
+
+    const w1 = mkWin("<!DOCTYPE html><body></body>").window;
+    w1.Vault.mirror("k1", '{"a":1}');
+    await sleep(200);
+    w1.dispatchEvent(new w1.Event("pagehide"));
+    await sleep(300);
+    ok(disk.get("k1") === '{"a":1}', "금고 미러링: 값이 IndexedDB에 저장됨");
+    ok((await w1.Vault.restoreMissing()) === 1 && w1.localStorage.getItem("k1") === '{"a":1}',
+       "금고 복원: 사라진 키가 localStorage로 돌아옴");
+    w1.Vault.forget("k1");
+    await sleep(300);
+    w1.localStorage.removeItem("k1");
+    ok((await w1.Vault.restoreMissing()) === 0 && disk.get("k1") === undefined,
+       "금고 삭제: forget한 키는 되살아나지 않음");
+
+    // 통합: 단어장에서 기록이 사라져도 금고에서 복원되는가
+    const seedState = { deck: "b1b2-conn", direction: "fr-ko", mode: "all", session: 1,
+      date: new Date().toLocaleDateString("en-CA"), dailyByDeck: {}, queues: {},
+      progress: { "L6-548": { "fr-ko": { streak: 3, o: 3, x: 0 }, "ko-fr": { streak: 0, o: 0, x: 0 }, "type": { streak: 3, o: 0, x: 0 }, gate: "passed" } } };
+    // 금고에 시드 상태가 미러링돼 있고, localStorage가 빈 새 창으로 여는 상황
+    const wv = mkWin("<!DOCTYPE html><body></body>").window;
+    wv.Vault.mirror("tef-5hour-vocab-v1", JSON.stringify(seedState));
+    await sleep(200);
+    wv.dispatchEvent(new wv.Event("pagehide"));
+    await sleep(300);
+    const domB = mkWin(read("index.html"));
+    await sleep(1200);
+    let revived = null;
+    try { revived = JSON.parse(domB.window.localStorage.getItem("tef-5hour-vocab-v1")); } catch (e) {}
+    ok(!!revived && revived.progress["L6-548"]["fr-ko"].streak === 3, "단어장: 저장소 소실 후 금고에서 진도 복원");
+    ok(domB.window.document.querySelector("#doneCount")?.textContent === "1", "단어장: 복원된 완료 수가 화면에 표시됨");
+    domB.window.close();
+  }
+
   console.log("\n[흐름: 퀴즈81 quiz81]");
   {
     const { dom, errors } = loadPage("quiz81.html");
