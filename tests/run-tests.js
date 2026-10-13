@@ -41,10 +41,7 @@ ok(quizEntries.length === 81, `quiz81 항목 수 = 81 (실제 ${quizEntries.leng
 ok(quizEntries.every((e, i) => e.n === i + 1), "quiz81 항목 번호가 1~81 순서대로");
 ok(quizEntries.every(e => idxCards.some(c => c.id === e.pid)), "quiz81 항목의 카드가 전부 index에 실재");
 ok(new Set(quizEntries.map(e => e.pid)).size === 80, "quiz81 고유 카드 = 80장 (bénéficier 중복 1쌍)");
-ok(quizCards.length === 80 && quizCards.every(c => {
-  const src = idxCards.find(x => x.id === c.id);
-  return src && src.fr === c.fr && src.ko === c.ko && src.en === c.en;
-}), "quiz81 내장 카드가 index와 어긋나지 않음");
+ok(JSON.stringify(quizCards) === JSON.stringify(idxCards), "퀴즈 내장 카드 = index 데이터 (완전 일치, 덱 퀴즈용)");
 
 const examRaw = JSON.parse(read("exam.html").match(/const RAW_CARDS = (\[.*?\]);/s)[1]);
 const byId = Object.fromEntries(idxCards.map(c => [c.id, c]));
@@ -264,6 +261,39 @@ function loadPage(file, seed) {
     ok(d.getElementById("done-answered").textContent === "162" && d.getElementById("done-rate").textContent === "100%",
        `전부 맞히면 인출 162회·정답률 100% (실제 ${d.getElementById("done-answered").textContent} / ${d.getElementById("done-rate").textContent})`);
     ok(errors.length === 0, "퀴즈81 타이핑 흐름 중 오류 없음", errors[0] || "");
+    dom.window.close();
+  }
+
+  console.log("\n[흐름: 덱 퀴즈 (범위 선택)]");
+  {
+    const { dom, errors } = loadPage("quiz81.html");
+    const d = dom.window.document;
+    await sleep(300);
+    const scopeChip = [...d.querySelectorAll("[data-scope]")].find(c => c.dataset.scope === "deck:b1b2-conn");
+    ok(!!scopeChip, "범위 선택에 B1·B2 연결어 칩 있음");
+    scopeChip?.click();
+    await sleep(30);
+    [...d.querySelectorAll("[data-mode]")].find(c => c.dataset.mode === "card")?.click();
+    [...d.querySelectorAll("[data-size]")].find(c => c.dataset.size === "30")?.click();
+    d.getElementById("start-btn").click();
+    await sleep(50);
+    const vis = id => !d.getElementById(id).classList.contains("hidden");
+    let steps = 0;
+    while (!vis("view-done") && steps < 3000) {
+      steps++;
+      if (vis("view-intro")) { d.getElementById("intro-btn").click(); await sleep(1); continue; }
+      if (vis("view-study")) {
+        d.getElementById("reveal-btn").click();
+        d.getElementById("right-btn").click();
+        await sleep(1); continue;
+      }
+      await sleep(3);
+    }
+    ok(vis("view-done"), `덱 퀴즈(연결어 34장) 끝까지 완주 (steps=${steps})`);
+    ok(+d.getElementById("done-answered").textContent >= 68, "덱 퀴즈 인출 횟수 >= 68 (1·2회차)");
+    ok(!!dom.window.localStorage.getItem("tef-quiz-v1[deck:b1b2-conn]"), "덱 퀴즈 진도가 범위별 키에 저장됨");
+    ok(!dom.window.localStorage.getItem("tef-quiz81-v1"), "덱 퀴즈가 퀴즈81 진도를 만들지 않음");
+    ok(errors.length === 0, "덱 퀴즈 흐름 중 오류 없음", errors[0] || "");
     dom.window.close();
   }
 
